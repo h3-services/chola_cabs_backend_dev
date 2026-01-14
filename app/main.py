@@ -4,9 +4,10 @@ Main FastAPI application for Cab Booking System
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from app.database import engine, Base
-from app.routers import drivers, vehicles, trips, payments, wallet_transactions, tariff_config, raw_data
+from app.routers import drivers, vehicles, trips, payments, wallet_transactions, tariff_config, raw_data, uploads
 
 # Load environment variables
 load_dotenv()
@@ -36,6 +37,11 @@ try:
 except Exception as e:
     print(f"❌ Error creating database tables: {e}")
 
+# Mount static files for uploads
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "d:/cab_ap/uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
 # Include routers
 app.include_router(drivers.router, prefix="/api/v1")
 app.include_router(vehicles.router, prefix="/api/v1")
@@ -44,6 +50,7 @@ app.include_router(payments.router, prefix="/api/v1")
 app.include_router(wallet_transactions.router, prefix="/api/v1")
 app.include_router(tariff_config.router, prefix="/api/v1")
 app.include_router(raw_data.router, prefix="/api/v1")
+app.include_router(uploads.router)
 
 @app.get("/")
 def read_root():
@@ -62,8 +69,9 @@ def health_check():
     try:
         # Test database connection
         from app.database import SessionLocal
+        from sqlalchemy import text
         db = SessionLocal()
-        db.execute("SELECT 1")
+        db.execute(text("SELECT 1"))
         db.close()
         db_status = "connected"
     except Exception as e:

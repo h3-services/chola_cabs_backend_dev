@@ -79,9 +79,24 @@ The system uses your existing MySQL database with these tables:
 - `vehicle_tariff_config` - Pricing configuration
 - `error_handling` - Error logging
 
-## 📚 API Endpoints
+## 📚 API Documentation
 
-### 👨💼 Driver Management
+Detailed API documentation is available in the `docs/api/` directory:
+
+### Core APIs
+- **[Drivers API](docs/api/drivers.md)** - Complete driver management, registration, availability, and wallet operations
+- **[Vehicles API](docs/api/vehicles.md)** - Vehicle registration, approval workflow, and driver-vehicle associations
+- **[Trips API](docs/api/trips.md)** - Trip lifecycle management, driver assignment, and status tracking
+- **[Payments API](docs/api/payments.md)** - Payment transaction management and gateway integration
+- **[Wallet Transactions API](docs/api/wallet_transactions.md)** - Driver wallet credits, debits, and balance management
+
+### Configuration & Admin APIs
+- **[Tariff Configuration API](docs/api/tariff_config.md)** - Dynamic pricing and fare calculation management
+- **[Raw Data API](docs/api/raw_data.md)** - Direct database access for administrative tasks
+
+### 📋 Quick API Reference
+
+#### 👨💼 Driver Management
 ```
 GET    /api/v1/drivers              # Get all drivers
 GET    /api/v1/drivers/{id}         # Get driver by ID
@@ -91,7 +106,7 @@ PATCH  /api/v1/drivers/{id}/availability  # Update availability
 GET    /api/v1/drivers/{id}/wallet-balance # Get wallet balance
 ```
 
-### 🚙 Vehicle Management
+#### 🚙 Vehicle Management
 ```
 GET    /api/v1/vehicles             # Get all vehicles
 GET    /api/v1/vehicles/{id}        # Get vehicle details
@@ -101,7 +116,7 @@ PUT    /api/v1/vehicles/{id}        # Update vehicle
 PATCH  /api/v1/vehicles/{id}/approve # Approve vehicle
 ```
 
-### 🛣️ Trip Management
+#### 🛣️ Trip Management
 ```
 GET    /api/v1/trips                # Get all trips
 GET    /api/v1/trips/{id}           # Get trip details

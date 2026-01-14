@@ -54,3 +54,10 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Uploads
+uploads/
+*.jpg
+*.jpeg
+*.png
+*.pdf
