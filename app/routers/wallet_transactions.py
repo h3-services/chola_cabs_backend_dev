@@ -23,7 +23,7 @@ def get_all_wallet_transactions(
 @router.get("/{transaction_id}", response_model=WalletTransactionResponse)
 def get_wallet_transaction_details(transaction_id: int, db: Session = Depends(get_db)):
     """Get wallet transaction details by ID"""
-    transaction = db.query(WalletTransaction).filter(WalletTransaction.transaction_id == transaction_id).first()
+    transaction = db.query(WalletTransaction).filter(WalletTransaction.wallet_id == transaction_id).first()
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -67,7 +67,7 @@ def update_wallet_transaction(
     db: Session = Depends(get_db)
 ):
     """Update wallet transaction information"""
-    transaction = db.query(WalletTransaction).filter(WalletTransaction.transaction_id == transaction_id).first()
+    transaction = db.query(WalletTransaction).filter(WalletTransaction.wallet_id == transaction_id).first()
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -85,7 +85,7 @@ def update_wallet_transaction(
 @router.delete("/{transaction_id}")
 def delete_wallet_transaction(transaction_id: int, db: Session = Depends(get_db)):
     """Delete a wallet transaction"""
-    transaction = db.query(WalletTransaction).filter(WalletTransaction.transaction_id == transaction_id).first()
+    transaction = db.query(WalletTransaction).filter(WalletTransaction.wallet_id == transaction_id).first()
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -101,7 +101,7 @@ def delete_wallet_transaction(transaction_id: int, db: Session = Depends(get_db)
     }
 
 @router.get("/driver/{driver_id}", response_model=List[WalletTransactionResponse])
-def get_wallet_transactions_by_driver(driver_id: int, db: Session = Depends(get_db)):
+def get_wallet_transactions_by_driver(driver_id: str, db: Session = Depends(get_db)):
     """Get all wallet transactions for a specific driver"""
     driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
     if not driver:

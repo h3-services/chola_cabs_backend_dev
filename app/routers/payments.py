@@ -34,12 +34,13 @@ def get_payment_details(payment_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=PaymentTransactionResponse, status_code=status.HTTP_201_CREATED)
 def create_payment(payment: PaymentTransactionCreate, db: Session = Depends(get_db)):
     """Create a new payment transaction"""
-    # Check if trip exists
-    trip = db.query(Trip).filter(Trip.trip_id == payment.trip_id).first()
-    if not trip:
+    # Check if driver exists
+    from app.models import Driver
+    driver = db.query(Driver).filter(Driver.driver_id == payment.driver_id).first()
+    if not driver:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Trip not found"
+            detail="Driver not found"
         )
     
     db_payment = PaymentTransaction(**payment.dict())
@@ -88,15 +89,16 @@ def delete_payment(payment_id: int, db: Session = Depends(get_db)):
         "payment_id": payment_id
     }
 
-@router.get("/trip/{trip_id}", response_model=List[PaymentTransactionResponse])
-def get_payments_by_trip(trip_id: int, db: Session = Depends(get_db)):
-    """Get all payments for a specific trip"""
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
+@router.get("/driver/{driver_id}", response_model=List[PaymentTransactionResponse])
+def get_payments_by_driver(driver_id: str, db: Session = Depends(get_db)):
+    """Get all payments for a specific driver"""
+    from app.models import Driver
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Trip not found"
+            detail="Driver not found"
         )
     
-    payments = db.query(PaymentTransaction).filter(PaymentTransaction.trip_id == trip_id).all()
+    payments = db.query(PaymentTransaction).filter(PaymentTransaction.driver_id == driver_id).all()
     return payments

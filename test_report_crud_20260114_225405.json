@@ -1,0 +1,151 @@
+{
+  "summary": {
+    "total": 22,
+    "passed": 11,
+    "failed": 11,
+    "pass_rate": 50.0,
+    "timestamp": "2026-01-14T22:54:05.910922"
+  },
+  "created_ids": {
+    "driver_id": "2d72d603-647f-482f-a407-3d34a91383d4",
+    "vehicle_id": null,
+    "trip_id": null,
+    "payment_id": null,
+    "wallet_transaction_id": null,
+    "tariff_config_id": null
+  },
+  "results": [
+    {
+      "name": "Root Endpoint",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:52:52.607355"
+    },
+    {
+      "name": "Health Check",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:52:59.593416"
+    },
+    {
+      "name": "API Statistics",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:53:06.838702"
+    },
+    {
+      "name": "GET - All Tariff Configs",
+      "status": "FAIL",
+      "details": "Expected 200, got 500 - Internal Server Error",
+      "timestamp": "2026-01-14T22:53:09.361268"
+    },
+    {
+      "name": "POST - Create Tariff Config",
+      "status": "FAIL",
+      "details": "Expected 201, got 500 - Internal Server Error",
+      "timestamp": "2026-01-14T22:53:11.786130"
+    },
+    {
+      "name": "GET - Active Tariff for Sedan",
+      "status": "FAIL",
+      "details": "Expected 200, got 500 - Internal Server Error",
+      "timestamp": "2026-01-14T22:53:15.070120"
+    },
+    {
+      "name": "GET - All Drivers",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:53:17.346501"
+    },
+    {
+      "name": "POST - Create Driver",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:53:20.190790"
+    },
+    {
+      "name": "GET - Driver by ID",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:53:22.585085"
+    },
+    {
+      "name": "PUT - Update Driver",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:53:25.318773"
+    },
+    {
+      "name": "PATCH - Update Driver Availability",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:53:27.949402"
+    },
+    {
+      "name": "GET - Driver Wallet Balance",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:53:31.626483"
+    },
+    {
+      "name": "GET - All Vehicles",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:53:36.496304"
+    },
+    {
+      "name": "POST - Create Vehicle",
+      "status": "FAIL",
+      "details": "Expected 201, got 500 - Internal Server Error",
+      "timestamp": "2026-01-14T22:53:42.392667"
+    },
+    {
+      "name": "GET - All Trips",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-14T22:53:45.915894"
+    },
+    {
+      "name": "POST - Create Trip",
+      "status": "FAIL",
+      "details": "Expected 201, got 500 - Internal Server Error",
+      "timestamp": "2026-01-14T22:53:50.279235"
+    },
+    {
+      "name": "GET - All Payments",
+      "status": "FAIL",
+      "details": "Expected 200, got 500 - Internal Server Error",
+      "timestamp": "2026-01-14T22:53:55.161699"
+    },
+    {
+      "name": "POST - Create Payment",
+      "status": "FAIL",
+      "details": "Expected 201, got 422 - [{'type': 'missing', 'loc': ['body', 'trip_id'], 'msg': 'Field required', 'input': {'driver_id': '2d72d603-647f-482f-a407-3d34a91383d4', 'amount': 500.0, 'transaction_type': 'credit', 'status': 'completed', 'transaction_id': 'TXN1768411435'}}, {'type': 'missing', 'loc': ['body', 'payment_method'], 'msg': 'Field required', 'input': {'driver_id': '2d72d603-647f-482f-a407-3d34a91383d4', 'amount': 500.0, 'transaction_type': 'credit', 'status': 'completed', 'transaction_id': 'TXN1768411435'}}, {'type': 'missing', 'loc': ['body', 'payment_status'], 'msg': 'Field required', 'input': {'driver_id': '2d72d603-647f-482f-a407-3d34a91383d4', 'amount': 500.0, 'transaction_type': 'credit', 'status': 'completed', 'transaction_id': 'TXN1768411435'}}]",
+      "timestamp": "2026-01-14T22:53:57.242438"
+    },
+    {
+      "name": "GET - Payments by Driver",
+      "status": "FAIL",
+      "details": "Expected 200, got 404 - Not Found",
+      "timestamp": "2026-01-14T22:53:59.296684"
+    },
+    {
+      "name": "GET - All Wallet Transactions",
+      "status": "FAIL",
+      "details": "Expected 200, got 500 - Internal Server Error",
+      "timestamp": "2026-01-14T22:54:01.763854"
+    },
+    {
+      "name": "POST - Create Wallet Transaction",
+      "status": "FAIL",
+      "details": "Expected 201, got 422 - [{'type': 'int_parsing', 'loc': ['body', 'driver_id'], 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '2d72d603-647f-482f-a407-3d34a91383d4'}]",
+      "timestamp": "2026-01-14T22:54:03.818447"
+    },
+    {
+      "name": "GET - Wallet Transactions by Driver",
+      "status": "FAIL",
+      "details": "Expected 200, got 422 - [{'type': 'int_parsing', 'loc': ['path', 'driver_id'], 'msg': 'Input should be a valid integer, unable to parse string as an integer', 'input': '2d72d603-647f-482f-a407-3d34a91383d4'}]",
+      "timestamp": "2026-01-14T22:54:05.891947"
+    }
+  ]
+}

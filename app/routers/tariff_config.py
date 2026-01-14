@@ -23,7 +23,7 @@ def get_all_tariff_configs(
 @router.get("/{config_id}", response_model=VehicleTariffConfigResponse)
 def get_tariff_config_details(config_id: int, db: Session = Depends(get_db)):
     """Get tariff configuration details by ID"""
-    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.config_id == config_id).first()
+    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
     if not config:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -47,7 +47,7 @@ def update_tariff_config(
     db: Session = Depends(get_db)
 ):
     """Update tariff configuration"""
-    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.config_id == config_id).first()
+    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
     if not config:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -65,7 +65,7 @@ def update_tariff_config(
 @router.delete("/{config_id}")
 def delete_tariff_config(config_id: int, db: Session = Depends(get_db)):
     """Delete a tariff configuration"""
-    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.config_id == config_id).first()
+    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
     if not config:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

@@ -134,38 +134,31 @@ class TripDriverRequestResponse(BaseModel):
 
 # Payment Schemas
 class PaymentTransactionBase(BaseModel):
-    trip_id: int
+    driver_id: str
     amount: Decimal
-    payment_method: str
-    payment_status: str
-    transaction_reference: Optional[str] = None
-    payment_gateway: Optional[str] = None
-    gateway_transaction_id: Optional[str] = None
-    gateway_response: Optional[str] = None
+    transaction_type: str  # credit, debit
+    status: str = "pending"  # pending, completed, failed
+    transaction_id: Optional[str] = None
 
 class PaymentTransactionCreate(PaymentTransactionBase):
     pass
 
 class PaymentTransactionUpdate(BaseModel):
     amount: Optional[Decimal] = None
-    payment_method: Optional[str] = None
-    payment_status: Optional[str] = None
-    transaction_reference: Optional[str] = None
-    payment_gateway: Optional[str] = None
-    gateway_transaction_id: Optional[str] = None
-    gateway_response: Optional[str] = None
+    transaction_type: Optional[str] = None
+    status: Optional[str] = None
+    transaction_id: Optional[str] = None
 
 class PaymentTransactionResponse(PaymentTransactionBase):
     payment_id: int
     created_at: datetime
-    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 # Wallet Schemas
 class WalletTransactionBase(BaseModel):
-    driver_id: int
+    driver_id: str
     transaction_type: str  # credit or debit
     amount: Decimal
     description: Optional[str] = None
@@ -181,7 +174,7 @@ class WalletTransactionUpdate(BaseModel):
     reference_id: Optional[str] = None
 
 class WalletTransactionResponse(WalletTransactionBase):
-    transaction_id: int
+    wallet_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -211,7 +204,7 @@ class VehicleTariffConfigUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class VehicleTariffConfigResponse(VehicleTariffConfigBase):
-    config_id: int
+    tariff_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
 
