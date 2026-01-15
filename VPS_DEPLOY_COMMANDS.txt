@@ -1,0 +1,168 @@
+================================================================================
+HOSTINGER VPS DEPLOYMENT COMMANDS
+Cab Booking API with Photo URL Support
+================================================================================
+
+STEP 1: SSH INTO VPS
+--------------------
+ssh root@72.62.196.30
+
+(Enter your VPS password when prompted)
+
+
+STEP 2: CLONE REPOSITORY (First Time Only)
+-------------------------------------------
+cd /var/www
+git clone https://github.com/h3-services/chola_cabs_backend_dev.git cab_booking_api
+cd cab_booking_api
+
+
+OR UPDATE EXISTING CODE:
+------------------------
+cd /var/www/cab_booking_api
+git pull origin main
+
+
+STEP 3: SETUP ENVIRONMENT FILE
+-------------------------------
+# Copy template
+cp env.production.template .env
+
+# Generate secret key
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+
+# Edit .env file
+nano .env
+
+Update these values:
+  SECRET_KEY=<paste the generated key from above>
+  DB_HOST=72.62.196.30
+  DB_PORT=3306
+  DB_USER=myuser
+  DB_PASSWORD=Hope3Services@2026
+  DB_NAME=cab_app
+  UPLOAD_DIR=/var/www/cab_booking_api/uploads
+  BASE_URL=http://72.62.196.30/uploads
+
+Save: Ctrl+X, then Y, then Enter
+
+
+STEP 4: RUN DEPLOYMENT SCRIPT
+------------------------------
+chmod +x deploy.sh setup_uploads.sh
+./deploy.sh
+
+
+STEP 5: SETUP UPLOAD DIRECTORIES
+---------------------------------
+./setup_uploads.sh
+
+
+STEP 6: VERIFY DEPLOYMENT
+--------------------------
+# Check service status
+systemctl status cab-api
+
+# View logs
+journalctl -u cab-api -f
+
+# Test API (press Ctrl+C to stop viewing logs first)
+curl http://72.62.196.30/
+
+# Test drivers endpoint (should show photo_url field)
+curl http://72.62.196.30/drivers/
+
+
+STEP 7: TEST PHOTO UPLOAD
+--------------------------
+# Create test image
+echo "test" > /tmp/test.jpg
+
+# Upload photo (replace DRIVER_ID with actual driver ID from step 6)
+curl -X POST "http://72.62.196.30/api/v1/uploads/driver/DRIVER_ID/photo" \
+  -F "file=@/tmp/test.jpg"
+
+
+================================================================================
+USEFUL COMMANDS
+================================================================================
+
+# Restart API service
+systemctl restart cab-api
+
+# Stop API service
+systemctl stop cab-api
+
+# Start API service
+systemctl start cab-api
+
+# View real-time logs
+journalctl -u cab-api -f
+
+# View last 50 log lines
+journalctl -u cab-api -n 50
+
+# Check Nginx status
+systemctl status nginx
+
+# Restart Nginx
+systemctl restart nginx
+
+# Test Nginx configuration
+nginx -t
+
+
+================================================================================
+UPDATING CODE (After Making Changes)
+================================================================================
+
+# On Windows (your local machine):
+cd d:\cab_ap
+git add .
+git commit -m "Your message"
+git push origin main
+
+# On VPS:
+ssh root@72.62.196.30
+cd /var/www/cab_booking_api
+git pull origin main
+systemctl restart cab-api
+systemctl status cab-api
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+# If API won't start:
+journalctl -u cab-api -n 100
+
+# If database connection fails:
+mysql -h 72.62.196.30 -u myuser -p cab_app
+
+# If photos won't upload:
+ls -la /var/www/cab_booking_api/uploads/drivers/photos/
+chown -R www-data:www-data /var/www/cab_booking_api/uploads
+chmod -R 755 /var/www/cab_booking_api/uploads
+
+# If photos return 404:
+nginx -t
+systemctl restart nginx
+tail -f /var/log/nginx/error.log
+
+
+================================================================================
+API ENDPOINTS
+================================================================================
+
+API Root:           http://72.62.196.30/
+API Documentation:  http://72.62.196.30/docs
+Get All Drivers:    http://72.62.196.30/drivers/
+Get Driver by ID:   http://72.62.196.30/drivers/{driver_id}
+Upload Photo:       POST http://72.62.196.30/api/v1/uploads/driver/{driver_id}/photo
+View Photos:        http://72.62.196.30/uploads/drivers/photos/filename.jpg
+
+
+================================================================================
+DONE! Your API is now running on Hostinger VPS
+================================================================================

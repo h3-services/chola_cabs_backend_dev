@@ -50,7 +50,7 @@ mkdir -p /var/www/cab_booking_api
 cd /var/www/cab_booking_api
 
 # Clone your repository
-git clone https://github.com/YOUR_USERNAME/chola_cabs_backend_dev.git .
+git clone https://github.com/h3-services/chola_cabs_backend_dev.git .
 
 # Or if already cloned, just pull latest
 git pull origin main
