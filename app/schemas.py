@@ -31,9 +31,14 @@ class DriverUpdate(BaseModel):
 class DriverResponse(DriverBase):
     driver_id: str
     kyc_verified: bool
+    photo_url: Optional[str] = None
+    aadhar_url: Optional[str] = None
+    licence_url: Optional[str] = None
     wallet_balance: Decimal
+    device_id: Optional[str] = None
     is_available: bool
     is_approved: bool
+    errors: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     
@@ -66,7 +71,14 @@ class VehicleUpdate(BaseModel):
 class VehicleResponse(VehicleBase):
     vehicle_id: int
     driver_id: str
+    rc_book_url: Optional[str] = None
+    fc_certificate_url: Optional[str] = None
+    vehicle_front_url: Optional[str] = None
+    vehicle_back_url: Optional[str] = None
+    vehicle_left_url: Optional[str] = None
+    vehicle_right_url: Optional[str] = None
     vehicle_approved: bool
+    errors: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     
@@ -100,15 +112,18 @@ class TripUpdate(BaseModel):
 
 class TripResponse(TripBase):
     trip_id: int
-    assigned_driver_id: Optional[int] = None
+    assigned_driver_id: Optional[str] = None
     trip_status: str
     distance_km: Optional[Decimal] = None
+    odo_start: Optional[int] = None
+    odo_end: Optional[int] = None
     fare: Optional[Decimal] = None
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
+    is_manual_assignment: bool
+    errors: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    is_manual_assignment: bool
     
     class Config:
         from_attributes = True

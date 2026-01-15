@@ -29,6 +29,8 @@ def get_all_vehicles(
             "vehicle_number": vehicle.vehicle_number,
             "vehicle_color": vehicle.vehicle_color,
             "seating_capacity": vehicle.seating_capacity,
+            "rc_expiry_date": vehicle.rc_expiry_date.isoformat() if vehicle.rc_expiry_date else None,
+            "fc_expiry_date": vehicle.fc_expiry_date.isoformat() if vehicle.fc_expiry_date else None,
             "vehicle_approved": vehicle.vehicle_approved,
             "rc_book_url": vehicle.rc_book_url,
             "fc_certificate_url": vehicle.fc_certificate_url,
@@ -36,6 +38,7 @@ def get_all_vehicles(
             "vehicle_back_url": vehicle.vehicle_back_url,
             "vehicle_left_url": vehicle.vehicle_left_url,
             "vehicle_right_url": vehicle.vehicle_right_url,
+            "errors": vehicle.errors,
             "created_at": vehicle.created_at.isoformat() if vehicle.created_at else None,
             "updated_at": vehicle.updated_at.isoformat() if vehicle.updated_at else None
         })
@@ -59,6 +62,8 @@ def get_vehicle_details(vehicle_id: int, db: Session = Depends(get_db)):
         "vehicle_number": vehicle.vehicle_number,
         "vehicle_color": vehicle.vehicle_color,
         "seating_capacity": vehicle.seating_capacity,
+        "rc_expiry_date": vehicle.rc_expiry_date.isoformat() if vehicle.rc_expiry_date else None,
+        "fc_expiry_date": vehicle.fc_expiry_date.isoformat() if vehicle.fc_expiry_date else None,
         "vehicle_approved": vehicle.vehicle_approved,
         "rc_book_url": vehicle.rc_book_url,
         "fc_certificate_url": vehicle.fc_certificate_url,
@@ -66,6 +71,7 @@ def get_vehicle_details(vehicle_id: int, db: Session = Depends(get_db)):
         "vehicle_back_url": vehicle.vehicle_back_url,
         "vehicle_left_url": vehicle.vehicle_left_url,
         "vehicle_right_url": vehicle.vehicle_right_url,
+        "errors": vehicle.errors,
         "created_at": vehicle.created_at.isoformat() if vehicle.created_at else None,
         "updated_at": vehicle.updated_at.isoformat() if vehicle.updated_at else None
     }
@@ -90,13 +96,20 @@ def get_vehicles_by_driver(driver_id: str, db: Session = Depends(get_db)):
             "vehicle_brand": vehicle.vehicle_brand,
             "vehicle_model": vehicle.vehicle_model,
             "vehicle_number": vehicle.vehicle_number,
+            "vehicle_color": vehicle.vehicle_color,
+            "seating_capacity": vehicle.seating_capacity,
+            "rc_expiry_date": vehicle.rc_expiry_date.isoformat() if vehicle.rc_expiry_date else None,
+            "fc_expiry_date": vehicle.fc_expiry_date.isoformat() if vehicle.fc_expiry_date else None,
             "vehicle_approved": vehicle.vehicle_approved,
             "rc_book_url": vehicle.rc_book_url,
             "fc_certificate_url": vehicle.fc_certificate_url,
             "vehicle_front_url": vehicle.vehicle_front_url,
             "vehicle_back_url": vehicle.vehicle_back_url,
             "vehicle_left_url": vehicle.vehicle_left_url,
-            "vehicle_right_url": vehicle.vehicle_right_url
+            "vehicle_right_url": vehicle.vehicle_right_url,
+            "errors": vehicle.errors,
+            "created_at": vehicle.created_at.isoformat() if vehicle.created_at else None,
+            "updated_at": vehicle.updated_at.isoformat() if vehicle.updated_at else None
         })
     return result
 

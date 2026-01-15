@@ -31,9 +31,14 @@ def get_all_drivers(
             "photo_url": driver.photo_url,
             "aadhar_url": driver.aadhar_url,
             "licence_url": driver.licence_url,
+            "licence_number": driver.licence_number,
+            "aadhar_number": driver.aadhar_number,
+            "licence_expiry": driver.licence_expiry.isoformat() if driver.licence_expiry else None,
             "wallet_balance": float(driver.wallet_balance) if driver.wallet_balance else 0.0,
+            "device_id": driver.device_id,
             "is_available": driver.is_available,
             "is_approved": driver.is_approved,
+            "errors": driver.errors,
             "created_at": driver.created_at.isoformat() if driver.created_at else None,
             "updated_at": driver.updated_at.isoformat() if driver.updated_at else None
         })
@@ -58,9 +63,14 @@ def get_driver_by_id(driver_id: str, db: Session = Depends(get_db)):
         "photo_url": driver.photo_url,
         "aadhar_url": driver.aadhar_url,
         "licence_url": driver.licence_url,
+        "licence_number": driver.licence_number,
+        "aadhar_number": driver.aadhar_number,
+        "licence_expiry": driver.licence_expiry.isoformat() if driver.licence_expiry else None,
         "wallet_balance": float(driver.wallet_balance) if driver.wallet_balance else 0.0,
+        "device_id": driver.device_id,
         "is_available": driver.is_available,
         "is_approved": driver.is_approved,
+        "errors": driver.errors,
         "created_at": driver.created_at.isoformat() if driver.created_at else None,
         "updated_at": driver.updated_at.isoformat() if driver.updated_at else None
     }
