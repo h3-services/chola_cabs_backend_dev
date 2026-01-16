@@ -90,6 +90,9 @@ class VehicleResponse(BaseModel):
     
     class Config:
         from_attributes = True
+        json_schema_extra = {"example": {}}
+        
+    model_config = {"ser_json_exclude_none": False}
 
 # Trip Schemas
 class TripBase(BaseModel):
