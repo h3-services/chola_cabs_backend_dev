@@ -53,8 +53,6 @@ class VehicleBase(BaseModel):
     vehicle_number: str
     vehicle_color: Optional[str] = None
     seating_capacity: Optional[int] = None
-    rc_expiry_date: Optional[date] = None
-    fc_expiry_date: Optional[date] = None
 
 class VehicleCreate(VehicleBase):
     driver_id: str
@@ -68,9 +66,17 @@ class VehicleUpdate(BaseModel):
     rc_expiry_date: Optional[date] = None
     fc_expiry_date: Optional[date] = None
 
-class VehicleResponse(VehicleBase):
+class VehicleResponse(BaseModel):
     vehicle_id: str
     driver_id: str
+    vehicle_type: str
+    vehicle_brand: str
+    vehicle_model: str
+    vehicle_number: str
+    vehicle_color: Optional[str] = None
+    seating_capacity: Optional[int] = None
+    rc_expiry_date: Optional[date] = None
+    fc_expiry_date: Optional[date] = None
     rc_book_url: Optional[str] = None
     fc_certificate_url: Optional[str] = None
     vehicle_front_url: Optional[str] = None
