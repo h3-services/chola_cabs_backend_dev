@@ -245,3 +245,19 @@ class VehicleTariffConfigResponse(VehicleTariffConfigBase):
 
     class Config:
         from_attributes = True
+
+# Error Handling Schemas
+class ErrorHandlingCreate(BaseModel):
+    error_type: str
+    error_code: str
+    error_description: str
+
+class ErrorHandlingResponse(BaseModel):
+    error_id: int
+    error_type: str
+    error_code: str
+    error_description: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

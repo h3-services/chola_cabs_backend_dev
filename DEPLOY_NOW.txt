@@ -1,0 +1,71 @@
+╔══════════════════════════════════════════════════════════════╗
+║         CHOLA CABS - VPS DEPLOYMENT QUICK START             ║
+╚══════════════════════════════════════════════════════════════╝
+
+📦 CODE PUSHED TO: https://github.com/h3-services/chola_cabs_backend_dev.git
+
+🚀 DEPLOY TO VPS (ONE COMMAND):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. SSH into your VPS:
+   ssh root@72.62.196.30
+
+2. Run this single command:
+   curl -sSL https://raw.githubusercontent.com/h3-services/chola_cabs_backend_dev/main/deploy_vps.sh | bash
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 YOUR API WILL BE LIVE AT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ API Base:       http://72.62.196.30:8000
+✓ Documentation:  http://72.62.196.30:8000/docs
+✓ Health Check:   http://72.62.196.30:8000/health
+✓ API Stats:      http://72.62.196.30:8000/api/v1/stats
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 USEFUL COMMANDS AFTER DEPLOYMENT:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Check Status:
+  systemctl status chola-cabs
+
+View Live Logs:
+  journalctl -u chola-cabs -f
+
+Restart Service:
+  systemctl restart chola-cabs
+
+Update Code:
+  cd /root/chola_cabs_backend_dev && git pull && systemctl restart chola-cabs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 MANUAL DEPLOYMENT (If needed):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ssh root@72.62.196.30
+
+cd /root
+git clone https://github.com/h3-services/chola_cabs_backend_dev.git
+cd chola_cabs_backend_dev
+
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+cp .env.production .env
+mkdir -p uploads/drivers/{photos,aadhar,licence}
+mkdir -p uploads/vehicles/{rc,fc,front,back,left,right}
+
+cp chola-cabs.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable chola-cabs
+systemctl start chola-cabs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ THAT'S IT! Your API will be running on port 8000
+
+For detailed instructions, see: VPS_DEPLOYMENT.md
