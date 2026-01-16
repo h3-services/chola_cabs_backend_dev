@@ -10,41 +10,16 @@ from app.schemas import VehicleCreate, VehicleUpdate, VehicleResponse
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
 
-@router.get("/", response_model=None)
+@router.get("/", response_model=List[VehicleResponse])
 def get_all_vehicles(
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db)
 ):
     """Get all vehicles with pagination"""
-    vehicles = db.query(Vehicle).offset(skip).limit(limit).all()
-    result = []
-    for vehicle in vehicles:
-        result.append({
-            "vehicle_id": vehicle.vehicle_id,
-            "driver_id": vehicle.driver_id,
-            "vehicle_type": vehicle.vehicle_type,
-            "vehicle_brand": vehicle.vehicle_brand,
-            "vehicle_model": vehicle.vehicle_model,
-            "vehicle_number": vehicle.vehicle_number,
-            "vehicle_color": vehicle.vehicle_color,
-            "seating_capacity": vehicle.seating_capacity,
-            "rc_expiry_date": vehicle.rc_expiry_date.isoformat() if vehicle.rc_expiry_date else None,
-            "fc_expiry_date": vehicle.fc_expiry_date.isoformat() if vehicle.fc_expiry_date else None,
-            "vehicle_approved": vehicle.vehicle_approved,
-            "rc_book_url": vehicle.rc_book_url,
-            "fc_certificate_url": vehicle.fc_certificate_url,
-            "vehicle_front_url": vehicle.vehicle_front_url,
-            "vehicle_back_url": vehicle.vehicle_back_url,
-            "vehicle_left_url": vehicle.vehicle_left_url,
-            "vehicle_right_url": vehicle.vehicle_right_url,
-            "errors": vehicle.errors,
-            "created_at": vehicle.created_at.isoformat() if vehicle.created_at else None,
-            "updated_at": vehicle.updated_at.isoformat() if vehicle.updated_at else None
-        })
-    return result
+    return db.query(Vehicle).offset(skip).limit(limit).all()
 
-@router.get("/{vehicle_id}")
+@router.get("/{vehicle_id}", response_model=VehicleResponse)
 def get_vehicle_details(vehicle_id: str, db: Session = Depends(get_db)):
     """Get vehicle details by ID"""
     vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
@@ -53,30 +28,9 @@ def get_vehicle_details(vehicle_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Vehicle not found"
         )
-    return {
-        "vehicle_id": vehicle.vehicle_id,
-        "driver_id": vehicle.driver_id,
-        "vehicle_type": vehicle.vehicle_type,
-        "vehicle_brand": vehicle.vehicle_brand,
-        "vehicle_model": vehicle.vehicle_model,
-        "vehicle_number": vehicle.vehicle_number,
-        "vehicle_color": vehicle.vehicle_color,
-        "seating_capacity": vehicle.seating_capacity,
-        "rc_expiry_date": vehicle.rc_expiry_date.isoformat() if vehicle.rc_expiry_date else None,
-        "fc_expiry_date": vehicle.fc_expiry_date.isoformat() if vehicle.fc_expiry_date else None,
-        "vehicle_approved": vehicle.vehicle_approved,
-        "rc_book_url": vehicle.rc_book_url,
-        "fc_certificate_url": vehicle.fc_certificate_url,
-        "vehicle_front_url": vehicle.vehicle_front_url,
-        "vehicle_back_url": vehicle.vehicle_back_url,
-        "vehicle_left_url": vehicle.vehicle_left_url,
-        "vehicle_right_url": vehicle.vehicle_right_url,
-        "errors": vehicle.errors,
-        "created_at": vehicle.created_at.isoformat() if vehicle.created_at else None,
-        "updated_at": vehicle.updated_at.isoformat() if vehicle.updated_at else None
-    }
+    return vehicle
 
-@router.get("/driver/{driver_id}")
+@router.get("/driver/{driver_id}", response_model=List[VehicleResponse])
 def get_vehicles_by_driver(driver_id: str, db: Session = Depends(get_db)):
     """Get all vehicles belonging to a specific driver"""
     driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
@@ -85,33 +39,7 @@ def get_vehicles_by_driver(driver_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Driver not found"
         )
-    
-    vehicles = db.query(Vehicle).filter(Vehicle.driver_id == driver_id).all()
-    result = []
-    for vehicle in vehicles:
-        result.append({
-            "vehicle_id": vehicle.vehicle_id,
-            "driver_id": vehicle.driver_id,
-            "vehicle_type": vehicle.vehicle_type,
-            "vehicle_brand": vehicle.vehicle_brand,
-            "vehicle_model": vehicle.vehicle_model,
-            "vehicle_number": vehicle.vehicle_number,
-            "vehicle_color": vehicle.vehicle_color,
-            "seating_capacity": vehicle.seating_capacity,
-            "rc_expiry_date": vehicle.rc_expiry_date.isoformat() if vehicle.rc_expiry_date else None,
-            "fc_expiry_date": vehicle.fc_expiry_date.isoformat() if vehicle.fc_expiry_date else None,
-            "vehicle_approved": vehicle.vehicle_approved,
-            "rc_book_url": vehicle.rc_book_url,
-            "fc_certificate_url": vehicle.fc_certificate_url,
-            "vehicle_front_url": vehicle.vehicle_front_url,
-            "vehicle_back_url": vehicle.vehicle_back_url,
-            "vehicle_left_url": vehicle.vehicle_left_url,
-            "vehicle_right_url": vehicle.vehicle_right_url,
-            "errors": vehicle.errors,
-            "created_at": vehicle.created_at.isoformat() if vehicle.created_at else None,
-            "updated_at": vehicle.updated_at.isoformat() if vehicle.updated_at else None
-        })
-    return result
+    return db.query(Vehicle).filter(Vehicle.driver_id == driver_id).all()
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def add_vehicle_to_driver(vehicle: VehicleCreate, db: Session = Depends(get_db)):
