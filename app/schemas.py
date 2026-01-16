@@ -56,6 +56,8 @@ class VehicleBase(BaseModel):
 
 class VehicleCreate(VehicleBase):
     driver_id: str
+    rc_expiry_date: Optional[date] = None
+    fc_expiry_date: Optional[date] = None
 
 class VehicleUpdate(BaseModel):
     vehicle_type: Optional[str] = None
