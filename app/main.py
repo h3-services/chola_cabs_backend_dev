@@ -13,12 +13,15 @@ from app.routers import drivers, vehicles, trips, payments, wallet_transactions,
 load_dotenv()
 
 # Create FastAPI app
+from fastapi.responses import ORJSONResponse
+
 app = FastAPI(
     title=os.getenv("APP_NAME", "Cab Booking API"),
     version=os.getenv("APP_VERSION", "1.0.0"),
     description="Production-ready Cab Booking Management System",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    default_response_class=ORJSONResponse
 )
 
 # Add CORS middleware
