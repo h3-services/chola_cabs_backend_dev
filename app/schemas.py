@@ -4,7 +4,7 @@ Pydantic schemas for request/response validation
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional, List
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 
 # Driver Schemas
 class DriverBase(BaseModel):
@@ -67,6 +67,8 @@ class VehicleUpdate(BaseModel):
     fc_expiry_date: Optional[date] = None
 
 class VehicleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
+    
     vehicle_id: str
     driver_id: str
     vehicle_type: str
@@ -87,12 +89,6 @@ class VehicleResponse(BaseModel):
     errors: Optional[str] = None
     created_at: datetime
     updated_at: datetime
-    
-    class Config:
-        from_attributes = True
-        json_schema_extra = {"example": {}}
-        
-    model_config = {"ser_json_exclude_none": False}
 
 # Trip Schemas
 class TripBase(BaseModel):

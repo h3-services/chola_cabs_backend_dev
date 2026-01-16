@@ -10,7 +10,7 @@ from app.schemas import VehicleCreate, VehicleUpdate, VehicleResponse
 
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
 
-@router.get("/", response_model=List[VehicleResponse])
+@router.get("/", response_model=List[VehicleResponse], response_model_exclude_none=False)
 def get_all_vehicles(
     skip: int = 0, 
     limit: int = 100, 
@@ -19,7 +19,7 @@ def get_all_vehicles(
     """Get all vehicles with pagination"""
     return db.query(Vehicle).offset(skip).limit(limit).all()
 
-@router.get("/{vehicle_id}", response_model=VehicleResponse)
+@router.get("/{vehicle_id}", response_model=VehicleResponse, response_model_exclude_none=False)
 def get_vehicle_details(vehicle_id: str, db: Session = Depends(get_db)):
     """Get vehicle details by ID"""
     vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
@@ -30,7 +30,7 @@ def get_vehicle_details(vehicle_id: str, db: Session = Depends(get_db)):
         )
     return vehicle
 
-@router.get("/driver/{driver_id}", response_model=List[VehicleResponse])
+@router.get("/driver/{driver_id}", response_model=List[VehicleResponse], response_model_exclude_none=False)
 def get_vehicles_by_driver(driver_id: str, db: Session = Depends(get_db)):
     """Get all vehicles belonging to a specific driver"""
     driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
