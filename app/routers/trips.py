@@ -12,6 +12,136 @@ from decimal import Decimal
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
+@router.get("/available")
+def get_available_trips(db: Session = Depends(get_db)):
+    """Get all available trips (OPEN status, no driver assigned)"""
+    trips = db.query(Trip).filter(
+        Trip.trip_status == "OPEN",
+        Trip.assigned_driver_id == None
+    ).all()
+    
+    result = []
+    for trip in trips:
+        result.append({
+            "trip_id": trip.trip_id,
+            "customer_name": trip.customer_name,
+            "pickup_address": trip.pickup_address,
+            "drop_address": trip.drop_address,
+            "trip_type": trip.trip_type,
+            "vehicle_type": trip.vehicle_type,
+            "passenger_count": trip.passenger_count,
+            "fare": float(trip.fare) if trip.fare else None,
+            "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
+            "created_at": trip.created_at.isoformat() if trip.created_at else None
+        })
+    return result
+
+@router.post("/request-trip")
+def driver_request_trip(trip_id: str, driver_id: str, db: Session = Depends(get_db)):
+    """Driver requests to accept a trip"""
+    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    if trip.trip_status != "OPEN":
+        raise HTTPException(status_code=400, detail="Trip is not available")
+    
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    if not driver.is_available:
+        raise HTTPException(status_code=400, detail="Driver is not available")
+    
+    # Check if request already exists
+    existing = db.query(TripDriverRequest).filter(
+        TripDriverRequest.trip_id == trip_id,
+        TripDriverRequest.driver_id == driver_id
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Request already exists")
+    
+    import uuid
+    request = TripDriverRequest(
+        request_id=str(uuid.uuid4()),
+        trip_id=trip_id,
+        driver_id=driver_id,
+        status="pending"
+    )
+    
+    db.add(request)
+    db.commit()
+    db.refresh(request)
+    
+    return {
+        "message": "Trip request submitted",
+        "request_id": request.request_id,
+        "trip_id": trip_id,
+        "status": "pending"
+    }
+
+@router.get("/requests/{trip_id}")
+def get_trip_requests(trip_id: str, db: Session = Depends(get_db)):
+    """Admin: Get all driver requests for a trip"""
+    requests = db.query(TripDriverRequest).filter(
+        TripDriverRequest.trip_id == trip_id
+    ).all()
+    
+    result = []
+    for req in requests:
+        driver = db.query(Driver).filter(Driver.driver_id == req.driver_id).first()
+        result.append({
+            "request_id": req.request_id,
+            "driver_id": req.driver_id,
+            "driver_name": driver.name if driver else None,
+            "driver_phone": str(driver.phone_number) if driver else None,
+            "status": req.status,
+            "created_at": req.created_at.isoformat() if req.created_at else None
+        })
+    return result
+
+@router.patch("/requests/{request_id}/approve")
+def approve_driver_request(request_id: str, db: Session = Depends(get_db)):
+    """Admin: Approve driver request and assign to trip"""
+    request = db.query(TripDriverRequest).filter(
+        TripDriverRequest.request_id == request_id
+    ).first()
+    
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    trip = db.query(Trip).filter(Trip.trip_id == request.trip_id).first()
+    driver = db.query(Driver).filter(Driver.driver_id == request.driver_id).first()
+    
+    if trip.assigned_driver_id:
+        raise HTTPException(status_code=400, detail="Trip already assigned")
+    
+    # Assign driver to trip
+    trip.assigned_driver_id = request.driver_id
+    trip.trip_status = "ASSIGNED"
+    driver.is_available = False
+    request.status = "accepted"
+    
+    # Reject other pending requests
+    other_requests = db.query(TripDriverRequest).filter(
+        TripDriverRequest.trip_id == request.trip_id,
+        TripDriverRequest.request_id != request_id,
+        TripDriverRequest.status == "pending"
+    ).all()
+    
+    for other in other_requests:
+        other.status = "rejected"
+    
+    db.commit()
+    
+    return {
+        "message": "Driver request approved",
+        "trip_id": trip.trip_id,
+        "driver_id": driver.driver_id,
+        "driver_name": driver.name
+    }
+
 @router.get("/", response_model=None)
 def get_all_trips(
     skip: int = 0, 
