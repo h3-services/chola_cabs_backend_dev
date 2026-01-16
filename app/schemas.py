@@ -69,7 +69,7 @@ class VehicleUpdate(BaseModel):
     fc_expiry_date: Optional[date] = None
 
 class VehicleResponse(VehicleBase):
-    vehicle_id: int
+    vehicle_id: str
     driver_id: str
     rc_book_url: Optional[str] = None
     fc_certificate_url: Optional[str] = None
@@ -111,7 +111,7 @@ class TripUpdate(BaseModel):
     ended_at: Optional[datetime] = None
 
 class TripResponse(TripBase):
-    trip_id: int
+    trip_id: str
     assigned_driver_id: Optional[str] = None
     trip_status: str
     distance_km: Optional[Decimal] = None
@@ -164,8 +164,13 @@ class PaymentTransactionUpdate(BaseModel):
     status: Optional[str] = None
     transaction_id: Optional[str] = None
 
-class PaymentTransactionResponse(PaymentTransactionBase):
-    payment_id: int
+class PaymentTransactionResponse(BaseModel):
+    payment_id: str
+    driver_id: Optional[str] = None
+    amount: Optional[Decimal] = None
+    transaction_type: Optional[str] = None
+    status: Optional[str] = None
+    transaction_id: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -176,8 +181,6 @@ class WalletTransactionBase(BaseModel):
     driver_id: str
     transaction_type: str  # credit or debit
     amount: Decimal
-    description: Optional[str] = None
-    reference_id: Optional[str] = None
 
 class WalletTransactionCreate(WalletTransactionBase):
     pass
@@ -185,13 +188,15 @@ class WalletTransactionCreate(WalletTransactionBase):
 class WalletTransactionUpdate(BaseModel):
     transaction_type: Optional[str] = None
     amount: Optional[Decimal] = None
-    description: Optional[str] = None
-    reference_id: Optional[str] = None
 
-class WalletTransactionResponse(WalletTransactionBase):
-    wallet_id: int
+class WalletTransactionResponse(BaseModel):
+    wallet_id: str
+    driver_id: Optional[str] = None
+    transaction_type: Optional[str] = None
+    amount: Optional[Decimal] = None
+    trip_id: Optional[str] = None
+    payment_id: Optional[str] = None
     created_at: datetime
-    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -219,7 +224,7 @@ class VehicleTariffConfigUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class VehicleTariffConfigResponse(VehicleTariffConfigBase):
-    tariff_id: int
+    tariff_id: str
     created_at: datetime
     updated_at: Optional[datetime] = None
 

@@ -1,0 +1,97 @@
+{
+  "summary": {
+    "total": 13,
+    "passed": 5,
+    "failed": 8,
+    "pass_rate": 38.46153846153847,
+    "timestamp": "2026-01-16T10:36:12.780530"
+  },
+  "created_ids": {
+    "driver_id": null,
+    "vehicle_id": null,
+    "trip_id": null,
+    "payment_id": null,
+    "wallet_transaction_id": null,
+    "tariff_config_id": null
+  },
+  "results": [
+    {
+      "name": "Root Endpoint",
+      "status": "FAIL",
+      "details": "Connection refused - Is the server running?",
+      "timestamp": "2026-01-16T10:35:36.698805"
+    },
+    {
+      "name": "Health Check",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-16T10:35:39.151624"
+    },
+    {
+      "name": "API Statistics",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-16T10:35:42.492219"
+    },
+    {
+      "name": "Get All Tariff Configs",
+      "status": "FAIL",
+      "details": "Expected 200, got 500 - Internal Server Error",
+      "timestamp": "2026-01-16T10:35:45.058565"
+    },
+    {
+      "name": "Create Tariff Config",
+      "status": "FAIL",
+      "details": "Expected 201, got 500 - Internal Server Error",
+      "timestamp": "2026-01-16T10:35:47.440638"
+    },
+    {
+      "name": "Get Active Tariff for Sedan",
+      "status": "FAIL",
+      "details": "Expected 200, got 500 - Internal Server Error",
+      "timestamp": "2026-01-16T10:35:50.824471"
+    },
+    {
+      "name": "Get All Drivers",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-16T10:35:57.987867"
+    },
+    {
+      "name": "Create Driver",
+      "status": "FAIL",
+      "details": "Expected 201, got 400 - Phone number already registered",
+      "timestamp": "2026-01-16T10:36:00.822012"
+    },
+    {
+      "name": "Get All Vehicles",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-16T10:36:03.101446"
+    },
+    {
+      "name": "Get All Trips",
+      "status": "PASS",
+      "details": "",
+      "timestamp": "2026-01-16T10:36:05.378122"
+    },
+    {
+      "name": "Create Trip",
+      "status": "FAIL",
+      "details": "Expected 201, got 500 - Internal Server Error",
+      "timestamp": "2026-01-16T10:36:07.761000"
+    },
+    {
+      "name": "Get All Payments",
+      "status": "FAIL",
+      "details": "Expected 200, got 500 - Internal Server Error",
+      "timestamp": "2026-01-16T10:36:10.302657"
+    },
+    {
+      "name": "Get All Wallet Transactions",
+      "status": "FAIL",
+      "details": "Expected 200, got 500 - Internal Server Error",
+      "timestamp": "2026-01-16T10:36:12.737225"
+    }
+  ]
+}

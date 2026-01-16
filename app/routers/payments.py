@@ -21,7 +21,7 @@ def get_all_payments(
     return payments
 
 @router.get("/{payment_id}", response_model=PaymentTransactionResponse)
-def get_payment_details(payment_id: int, db: Session = Depends(get_db)):
+def get_payment_details(payment_id: str, db: Session = Depends(get_db)):
     """Get payment details by ID"""
     payment = db.query(PaymentTransaction).filter(PaymentTransaction.payment_id == payment_id).first()
     if not payment:
@@ -43,7 +43,12 @@ def create_payment(payment: PaymentTransactionCreate, db: Session = Depends(get_
             detail="Driver not found"
         )
     
-    db_payment = PaymentTransaction(**payment.dict())
+    # Generate UUID for payment_id
+    import uuid
+    payment_data = payment.dict()
+    payment_data['payment_id'] = str(uuid.uuid4())
+    
+    db_payment = PaymentTransaction(**payment_data)
     db.add(db_payment)
     db.commit()
     db.refresh(db_payment)
@@ -51,7 +56,7 @@ def create_payment(payment: PaymentTransactionCreate, db: Session = Depends(get_
 
 @router.put("/{payment_id}", response_model=PaymentTransactionResponse)
 def update_payment(
-    payment_id: int, 
+    payment_id: str, 
     payment_update: PaymentTransactionUpdate, 
     db: Session = Depends(get_db)
 ):
@@ -72,7 +77,7 @@ def update_payment(
     return payment
 
 @router.delete("/{payment_id}")
-def delete_payment(payment_id: int, db: Session = Depends(get_db)):
+def delete_payment(payment_id: str, db: Session = Depends(get_db)):
     """Delete a payment transaction"""
     payment = db.query(PaymentTransaction).filter(PaymentTransaction.payment_id == payment_id).first()
     if not payment:

@@ -273,8 +273,7 @@ def run_all_tests():
         wallet_data = {
             "driver_id": created_ids['driver_id'],
             "transaction_type": "credit",
-            "amount": 1000.00,
-            "description": "Test wallet credit"
+            "amount": 1000.00
         }
         test_endpoint("POST", "/wallet-transactions", "Create Wallet Transaction", 
                      wallet_data, 201, "wallet_transaction_id")

@@ -45,7 +45,7 @@ def get_all_vehicles(
     return result
 
 @router.get("/{vehicle_id}")
-def get_vehicle_details(vehicle_id: int, db: Session = Depends(get_db)):
+def get_vehicle_details(vehicle_id: str, db: Session = Depends(get_db)):
     """Get vehicle details by ID"""
     vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
     if not vehicle:
@@ -130,7 +130,12 @@ def add_vehicle_to_driver(vehicle: VehicleCreate, db: Session = Depends(get_db))
             detail="Vehicle number already registered"
         )
     
-    db_vehicle = Vehicle(**vehicle.dict())
+    # Generate UUID for vehicle_id
+    import uuid
+    vehicle_data = vehicle.dict()
+    vehicle_data['vehicle_id'] = str(uuid.uuid4())
+    
+    db_vehicle = Vehicle(**vehicle_data)
     db.add(db_vehicle)
     db.commit()
     db.refresh(db_vehicle)
@@ -144,7 +149,7 @@ def add_vehicle_to_driver(vehicle: VehicleCreate, db: Session = Depends(get_db))
 
 @router.put("/{vehicle_id}")
 def update_vehicle(
-    vehicle_id: int, 
+    vehicle_id: str, 
     vehicle_update: VehicleUpdate, 
     db: Session = Depends(get_db)
 ):
@@ -169,7 +174,7 @@ def update_vehicle(
     }
 
 @router.patch("/{vehicle_id}/approve")
-def approve_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
+def approve_vehicle(vehicle_id: str, db: Session = Depends(get_db)):
     """Approve a vehicle for operations"""
     vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
     if not vehicle:
@@ -190,7 +195,7 @@ def approve_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
     }
 
 @router.delete("/{vehicle_id}")
-def delete_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
+def delete_vehicle(vehicle_id: str, db: Session = Depends(get_db)):
     """Delete a vehicle"""
     vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
     if not vehicle:

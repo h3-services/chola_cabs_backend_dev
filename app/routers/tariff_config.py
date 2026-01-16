@@ -21,7 +21,7 @@ def get_all_tariff_configs(
     return configs
 
 @router.get("/{config_id}", response_model=VehicleTariffConfigResponse)
-def get_tariff_config_details(config_id: int, db: Session = Depends(get_db)):
+def get_tariff_config_details(config_id: str, db: Session = Depends(get_db)):
     """Get tariff configuration details by ID"""
     config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
     if not config:
@@ -34,7 +34,12 @@ def get_tariff_config_details(config_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=VehicleTariffConfigResponse, status_code=status.HTTP_201_CREATED)
 def create_tariff_config(config: VehicleTariffConfigCreate, db: Session = Depends(get_db)):
     """Create a new tariff configuration"""
-    db_config = VehicleTariffConfig(**config.dict())
+    # Generate UUID for tariff_id
+    import uuid
+    config_data = config.dict()
+    config_data['tariff_id'] = str(uuid.uuid4())
+    
+    db_config = VehicleTariffConfig(**config_data)
     db.add(db_config)
     db.commit()
     db.refresh(db_config)
@@ -42,7 +47,7 @@ def create_tariff_config(config: VehicleTariffConfigCreate, db: Session = Depend
 
 @router.put("/{config_id}", response_model=VehicleTariffConfigResponse)
 def update_tariff_config(
-    config_id: int, 
+    config_id: str, 
     config_update: VehicleTariffConfigUpdate, 
     db: Session = Depends(get_db)
 ):
@@ -63,7 +68,7 @@ def update_tariff_config(
     return config
 
 @router.delete("/{config_id}")
-def delete_tariff_config(config_id: int, db: Session = Depends(get_db)):
+def delete_tariff_config(config_id: str, db: Session = Depends(get_db)):
     """Delete a tariff configuration"""
     config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
     if not config:

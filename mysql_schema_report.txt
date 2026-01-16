@@ -1,0 +1,146 @@
+============================================================
+Connected to MySQL Server!
+============================================================
+
+Available databases:
+  - cab_app
+  - information_schema
+  - performance_schema
+
+============================================================
+Using database: cab_app
+============================================================
+
+Tables in database:
+  - drivers
+  - error_handling
+  - payment_transactions
+  - trip_driver_requests
+  - trips
+  - vehicle_tariff_config
+  - vehicles
+  - wallet_transactions
+
+============================================================
+Table: drivers
+============================================================
+  driver_id                 char(36)                       NULL:NO    KEY:PRI  
+  name                      varchar(100)                   NULL:YES   KEY:     
+  phone_number              bigint                         NULL:YES   KEY:     
+  email                     varchar(100)                   NULL:YES   KEY:     
+  kyc_verified              tinyint(1)                     NULL:YES   KEY:     
+  primary_location          varchar(255)                   NULL:YES   KEY:     
+  photo_url                 varchar(255)                   NULL:YES   KEY:     
+  wallet_balance            decimal(10,2)                  NULL:YES   KEY:     
+  licence_number            varchar(50)                    NULL:YES   KEY:     
+  aadhar_number             varchar(20)                    NULL:YES   KEY:     
+  licence_url               varchar(255)                   NULL:YES   KEY:     
+  aadhar_url                varchar(255)                   NULL:YES   KEY:     
+  licence_expiry            date                           NULL:YES   KEY:     
+  created_at                timestamp                      NULL:YES   KEY:     
+  updated_at                timestamp                      NULL:YES   KEY:     
+  device_id                 varchar(255)                   NULL:YES   KEY:     
+  is_available              tinyint(1)                     NULL:YES   KEY:     
+  is_approved               tinyint(1)                     NULL:YES   KEY:     
+  errors                    json                           NULL:YES   KEY:     
+
+============================================================
+Table: vehicles
+============================================================
+  vehicle_id                char(36)                       NULL:NO    KEY:PRI  
+  driver_id                 char(36)                       NULL:YES   KEY:MUL  
+  vehicle_type              varchar(50)                    NULL:YES   KEY:     
+  vehicle_brand             varchar(100)                   NULL:YES   KEY:     
+  vehicle_model             varchar(100)                   NULL:YES   KEY:     
+  rc_expiry_date            date                           NULL:YES   KEY:     
+  fc_expiry_date            date                           NULL:YES   KEY:     
+  vehicle_number            varchar(20)                    NULL:YES   KEY:     
+  vehicle_color             varchar(50)                    NULL:YES   KEY:     
+  seating_capacity          int                            NULL:YES   KEY:     
+  rc_book_url               varchar(255)                   NULL:YES   KEY:     
+  fc_certificate_url        varchar(255)                   NULL:YES   KEY:     
+  vehicle_front_url         varchar(255)                   NULL:YES   KEY:     
+  vehicle_back_url          varchar(255)                   NULL:YES   KEY:     
+  vehicle_left_url          varchar(255)                   NULL:YES   KEY:     
+  vehicle_right_url         varchar(255)                   NULL:YES   KEY:     
+  created_at                timestamp                      NULL:YES   KEY:     
+  updated_at                timestamp                      NULL:YES   KEY:     
+  errors                    json                           NULL:YES   KEY:     
+  vehicle_approved          tinyint(1)                     NULL:YES   KEY:     
+
+============================================================
+Table: trips
+============================================================
+  trip_id                   char(36)                       NULL:NO    KEY:PRI  
+  customer_name             varchar(100)                   NULL:YES   KEY:     
+  customer_phone            varchar(15)                    NULL:YES   KEY:     
+  pickup_address            text                           NULL:YES   KEY:     
+  drop_address              text                           NULL:YES   KEY:     
+  trip_type                 enum('ONE_WAY','ROUND_TRIP')   NULL:YES   KEY:     
+  vehicle_type              varchar(50)                    NULL:YES   KEY:     
+  assigned_driver_id        char(36)                       NULL:YES   KEY:MUL  
+  trip_status               enum('OPEN','ASSIGNED','STARTED','COMPLETED','CANCELLED') NULL:YES   KEY:     
+  distance_km               decimal(10,2)                  NULL:YES   KEY:     
+  odo_start                 int                            NULL:YES   KEY:     
+  odo_end                   int                            NULL:YES   KEY:     
+  fare                      decimal(10,2)                  NULL:YES   KEY:     
+  started_at                timestamp                      NULL:YES   KEY:     
+  ended_at                  timestamp                      NULL:YES   KEY:     
+  created_at                timestamp                      NULL:YES   KEY:     
+  updated_at                timestamp                      NULL:YES   KEY:     
+  planned_start_at          timestamp                      NULL:YES   KEY:     
+  planned_end_at            timestamp                      NULL:YES   KEY:     
+  is_manual_assignment      tinyint(1)                     NULL:YES   KEY:     
+  passenger_count           int                            NULL:YES   KEY:     
+  errors                    json                           NULL:YES   KEY:     
+
+============================================================
+Table: payment_transactions
+============================================================
+  payment_id                char(36)                       NULL:NO    KEY:PRI  
+  driver_id                 char(36)                       NULL:YES   KEY:MUL  
+  amount                    decimal(10,2)                  NULL:YES   KEY:     
+  transaction_id            varchar(100)                   NULL:YES   KEY:     
+  transaction_type          enum('CASH','ONLINE')          NULL:YES   KEY:     
+  status                    enum('SUCCESS','FAILED')       NULL:YES   KEY:     
+  created_at                timestamp                      NULL:YES   KEY:     
+  errors                    json                           NULL:YES   KEY:     
+
+============================================================
+Table: wallet_transactions
+============================================================
+  wallet_id                 char(36)                       NULL:NO    KEY:PRI  
+  driver_id                 char(36)                       NULL:YES   KEY:MUL  
+  trip_id                   char(36)                       NULL:YES   KEY:MUL  
+  payment_id                char(36)                       NULL:YES   KEY:MUL  
+  amount                    decimal(10,2)                  NULL:YES   KEY:     
+  transaction_type          enum('CREDIT','DEBIT')         NULL:YES   KEY:     
+  created_at                timestamp                      NULL:YES   KEY:     
+
+============================================================
+Table: vehicle_tariff_config
+============================================================
+  tariff_id                 char(36)                       NULL:NO    KEY:PRI  
+  vehicle_type              varchar(50)                    NULL:YES   KEY:     
+  one_way_per_km            decimal(10,2)                  NULL:YES   KEY:     
+  round_trip_per_km         decimal(10,2)                  NULL:YES   KEY:     
+  driver_allowance          decimal(10,2)                  NULL:YES   KEY:     
+  one_way_min_km            int                            NULL:YES   KEY:     
+  round_trip_min_km         int                            NULL:YES   KEY:     
+  is_active                 tinyint(1)                     NULL:YES   KEY:     
+  created_at                timestamp                      NULL:YES   KEY:     
+  updated_at                timestamp                      NULL:YES   KEY:     
+
+============================================================
+Data Counts
+============================================================
+  drivers                        5 records
+  vehicles                       1 records
+  trips                          1 records
+  payment_transactions           1 records
+  wallet_transactions            1 records
+  vehicle_tariff_config          1 records
+
+============================================================
+Schema check complete!
+============================================================

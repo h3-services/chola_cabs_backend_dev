@@ -1,0 +1,219 @@
+{
+  "summary": {
+    "total": 24,
+    "passed": 23,
+    "failed": 1,
+    "pass_rate": 95.83333333333334,
+    "get_tests": {
+      "total": 18,
+      "passed": 18
+    },
+    "post_tests": {
+      "total": 6,
+      "passed": 5
+    },
+    "timestamp": "2026-01-16T11:14:13.478418"
+  },
+  "created_ids": {
+    "tariff_id": "20dc54b3-f129-4283-9c64-6763cc4d808d",
+    "driver_id": "2f299936-83d5-4806-aa0a-f01841f9c265",
+    "vehicle_id": "05d912e0-36d4-42cb-a2ec-08a731480ccf",
+    "trip_id": null,
+    "payment_id": null,
+    "wallet_id": "6e37ec94-c464-450b-ba87-b9124583813b"
+  },
+  "results": [
+    {
+      "method": "GET",
+      "endpoint": "http://localhost:8000",
+      "name": "GET Root Endpoint",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "http://localhost:8000/health",
+      "name": "GET Health Check",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/stats",
+      "name": "GET API Statistics",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/tariff-config",
+      "name": "GET All Tariff Configs",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "POST",
+      "endpoint": "/tariff-config",
+      "name": "POST Create Tariff Config",
+      "status": "PASS",
+      "status_code": 201,
+      "expected": 201
+    },
+    {
+      "method": "GET",
+      "endpoint": "/tariff-config/active/sedan",
+      "name": "GET Active Tariff for Sedan",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/drivers",
+      "name": "GET All Drivers",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "POST",
+      "endpoint": "/drivers",
+      "name": "POST Create Driver",
+      "status": "PASS",
+      "status_code": 201,
+      "expected": 201
+    },
+    {
+      "method": "GET",
+      "endpoint": "/drivers/2f299936-83d5-4806-aa0a-f01841f9c265",
+      "name": "GET Driver by ID",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/drivers/2f299936-83d5-4806-aa0a-f01841f9c265/wallet-balance",
+      "name": "GET Driver Wallet Balance",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/vehicles",
+      "name": "GET All Vehicles",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "POST",
+      "endpoint": "/vehicles",
+      "name": "POST Create Vehicle",
+      "status": "PASS",
+      "status_code": 201,
+      "expected": 201
+    },
+    {
+      "method": "GET",
+      "endpoint": "/vehicles/05d912e0-36d4-42cb-a2ec-08a731480ccf",
+      "name": "GET Vehicle by ID",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/vehicles/driver/2f299936-83d5-4806-aa0a-f01841f9c265",
+      "name": "GET Vehicles by Driver",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/trips",
+      "name": "GET All Trips",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "POST",
+      "endpoint": "/trips",
+      "name": "POST Create Trip",
+      "status": "PASS",
+      "status_code": 201,
+      "expected": 201
+    },
+    {
+      "method": "GET",
+      "endpoint": "/trips/33da9fb1-bbf5-4c96-83af-60cf4e3f9864",
+      "name": "GET Trip by ID",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/trips/driver/2f299936-83d5-4806-aa0a-f01841f9c265",
+      "name": "GET Trips by Driver",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/payments",
+      "name": "GET All Payments",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "POST",
+      "endpoint": "/payments",
+      "name": "POST Create Payment",
+      "status": "FAIL",
+      "status_code": 500,
+      "expected": 201
+    },
+    {
+      "method": "GET",
+      "endpoint": "/payments/driver/2f299936-83d5-4806-aa0a-f01841f9c265",
+      "name": "GET Payments by Driver",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "GET",
+      "endpoint": "/wallet-transactions",
+      "name": "GET All Wallet Transactions",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    },
+    {
+      "method": "POST",
+      "endpoint": "/wallet-transactions",
+      "name": "POST Create Wallet Transaction",
+      "status": "PASS",
+      "status_code": 201,
+      "expected": 201
+    },
+    {
+      "method": "GET",
+      "endpoint": "/wallet-transactions/driver/2f299936-83d5-4806-aa0a-f01841f9c265",
+      "name": "GET Wallet Transactions by Driver",
+      "status": "PASS",
+      "status_code": 200,
+      "expected": 200
+    }
+  ]
+}

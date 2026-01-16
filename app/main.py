@@ -33,9 +33,9 @@ app.add_middleware(
 # Create database tables
 try:
     Base.metadata.create_all(bind=engine)
-    print("✅ Database tables created successfully")
+    print("[OK] Database tables created successfully")
 except Exception as e:
-    print(f"❌ Error creating database tables: {e}")
+    print(f"[ERROR] Error creating database tables: {e}")
 
 # Mount static files for uploads
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "d:/cab_ap/uploads")

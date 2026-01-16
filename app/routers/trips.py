@@ -55,7 +55,7 @@ def get_all_trips(
     return result
 
 @router.get("/{trip_id}")
-def get_trip_details(trip_id: int, db: Session = Depends(get_db)):
+def get_trip_details(trip_id: str, db: Session = Depends(get_db)):
     """Get trip details by ID"""
     trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
     if not trip:
@@ -91,8 +91,12 @@ def get_trip_details(trip_id: int, db: Session = Depends(get_db)):
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_trip(trip: TripCreate, db: Session = Depends(get_db)):
     """Create a new trip"""
-    # Create trip with basic fare calculation
-    db_trip = Trip(**trip.dict())
+    # Generate UUID for trip_id
+    import uuid
+    trip_data = trip.dict()
+    trip_data['trip_id'] = str(uuid.uuid4())
+    
+    db_trip = Trip(**trip_data)
     db_trip.fare = 100.00  # Default fare
     
     db.add(db_trip)
@@ -109,7 +113,7 @@ def create_trip(trip: TripCreate, db: Session = Depends(get_db)):
 
 @router.put("/{trip_id}")
 def update_trip(
-    trip_id: int, 
+    trip_id: str, 
     trip_update: TripUpdate, 
     db: Session = Depends(get_db)
 ):
@@ -135,7 +139,7 @@ def update_trip(
 
 @router.patch("/{trip_id}/assign-driver/{driver_id}")
 def assign_driver_to_trip(
-    trip_id: int, 
+    trip_id: str, 
     driver_id: str, 
     db: Session = Depends(get_db)
 ):
@@ -189,7 +193,7 @@ def assign_driver_to_trip(
 
 @router.patch("/{trip_id}/status")
 def update_trip_status(
-    trip_id: int, 
+    trip_id: str, 
     new_status: str, 
     db: Session = Depends(get_db)
 ):
@@ -230,8 +234,8 @@ def update_trip_status(
 
 @router.post("/{trip_id}/driver-requests", status_code=status.HTTP_201_CREATED)
 def create_driver_request(
-    trip_id: int,
-    driver_id: int,
+    trip_id: str,
+    driver_id: str,
     db: Session = Depends(get_db)
 ):
     """Create a driver request for a trip"""
@@ -325,7 +329,7 @@ def get_trips_by_driver(driver_id: str, db: Session = Depends(get_db)):
     return result
 
 @router.delete("/{trip_id}")
-def delete_trip(trip_id: int, db: Session = Depends(get_db)):
+def delete_trip(trip_id: str, db: Session = Depends(get_db)):
     """Delete a trip"""
     trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
     if not trip:

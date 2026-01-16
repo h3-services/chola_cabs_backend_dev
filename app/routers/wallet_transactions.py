@@ -21,7 +21,7 @@ def get_all_wallet_transactions(
     return transactions
 
 @router.get("/{transaction_id}", response_model=WalletTransactionResponse)
-def get_wallet_transaction_details(transaction_id: int, db: Session = Depends(get_db)):
+def get_wallet_transaction_details(transaction_id: str, db: Session = Depends(get_db)):
     """Get wallet transaction details by ID"""
     transaction = db.query(WalletTransaction).filter(WalletTransaction.wallet_id == transaction_id).first()
     if not transaction:
@@ -42,7 +42,12 @@ def create_wallet_transaction(transaction: WalletTransactionCreate, db: Session 
             detail="Driver not found"
         )
     
-    db_transaction = WalletTransaction(**transaction.dict())
+    # Generate UUID for wallet_id
+    import uuid
+    transaction_data = transaction.dict()
+    transaction_data['wallet_id'] = str(uuid.uuid4())
+    
+    db_transaction = WalletTransaction(**transaction_data)
     
     # Update driver wallet balance
     if transaction.transaction_type == "credit":
@@ -62,7 +67,7 @@ def create_wallet_transaction(transaction: WalletTransactionCreate, db: Session 
 
 @router.put("/{transaction_id}", response_model=WalletTransactionResponse)
 def update_wallet_transaction(
-    transaction_id: int, 
+    transaction_id: str, 
     transaction_update: WalletTransactionUpdate, 
     db: Session = Depends(get_db)
 ):
@@ -83,7 +88,7 @@ def update_wallet_transaction(
     return transaction
 
 @router.delete("/{transaction_id}")
-def delete_wallet_transaction(transaction_id: int, db: Session = Depends(get_db)):
+def delete_wallet_transaction(transaction_id: str, db: Session = Depends(get_db)):
     """Delete a wallet transaction"""
     transaction = db.query(WalletTransaction).filter(WalletTransaction.wallet_id == transaction_id).first()
     if not transaction:
