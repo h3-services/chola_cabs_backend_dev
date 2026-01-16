@@ -181,6 +181,29 @@ def update_kyc_status(
         "kyc_verified": kyc_status
     }
 
+@router.patch("/{driver_id}/approve")
+def approve_driver(
+    driver_id: str,
+    db: Session = Depends(get_db)
+):
+    """Admin endpoint to approve driver"""
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Driver not found"
+        )
+    
+    driver.is_approved = True
+    db.commit()
+    db.refresh(driver)
+    
+    return {
+        "message": "Driver approved successfully",
+        "driver_id": driver_id,
+        "is_approved": True
+    }
+
 @router.get("/{driver_id}/wallet-balance")
 def get_driver_wallet_balance(driver_id: str, db: Session = Depends(get_db)):
     """Get driver's current wallet balance"""
