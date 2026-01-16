@@ -34,6 +34,7 @@ class DriverUpdate(BaseModel):
     licence_number: Optional[str] = None
     aadhar_number: Optional[str] = None
     licence_expiry: Optional[date] = None
+    kyc_verified: Optional[KYCStatus] = None
 
 class DriverResponse(DriverBase):
     driver_id: str

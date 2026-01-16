@@ -151,6 +151,36 @@ def update_driver_availability(
         "is_available": is_available
     }
 
+@router.patch("/{driver_id}/kyc-status")
+def update_kyc_status(
+    driver_id: str,
+    kyc_status: str,
+    db: Session = Depends(get_db)
+):
+    """Admin endpoint to approve/reject driver KYC"""
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Driver not found"
+        )
+    
+    if kyc_status not in ["pending", "approved", "rejected"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid KYC status. Must be: pending, approved, or rejected"
+        )
+    
+    driver.kyc_verified = kyc_status
+    db.commit()
+    db.refresh(driver)
+    
+    return {
+        "message": f"Driver KYC status updated to {kyc_status}",
+        "driver_id": driver_id,
+        "kyc_verified": kyc_status
+    }
+
 @router.get("/{driver_id}/wallet-balance")
 def get_driver_wallet_balance(driver_id: str, db: Session = Depends(get_db)):
     """Get driver's current wallet balance"""
