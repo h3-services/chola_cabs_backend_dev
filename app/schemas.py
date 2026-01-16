@@ -13,6 +13,13 @@ class KYCStatus(str, Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
 
+class TripStatus(str, Enum):
+    OPEN = "OPEN"
+    ASSIGNED = "ASSIGNED"
+    STARTED = "STARTED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
 # Driver Schemas
 class DriverBase(BaseModel):
     name: str
@@ -128,7 +135,7 @@ class TripUpdate(BaseModel):
 class TripResponse(TripBase):
     trip_id: str
     assigned_driver_id: Optional[str] = None
-    trip_status: str
+    trip_status: TripStatus
     distance_km: Optional[Decimal] = None
     odo_start: Optional[int] = None
     odo_end: Optional[int] = None
