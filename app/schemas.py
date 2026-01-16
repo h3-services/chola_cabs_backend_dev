@@ -70,7 +70,7 @@ class VehicleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
     
     vehicle_id: str
-    driver_id: str
+    driver_id: Optional[str] = None
     vehicle_type: str
     vehicle_brand: str
     vehicle_model: str
@@ -86,7 +86,7 @@ class VehicleResponse(BaseModel):
     vehicle_left_url: Optional[str] = None
     vehicle_right_url: Optional[str] = None
     vehicle_approved: bool
-    errors: Optional[str] = None
+    errors: Optional[dict] = None
     created_at: datetime
     updated_at: datetime
 
