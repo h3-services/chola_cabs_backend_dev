@@ -70,7 +70,7 @@ async def upload_licence(driver_id: str, file: UploadFile = File(...), db: Sessi
     return {"licence_url": url}
 
 @router.post("/vehicle/{vehicle_id}/rc")
-async def upload_rc(vehicle_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
     vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
@@ -81,7 +81,7 @@ async def upload_rc(vehicle_id: int, file: UploadFile = File(...), db: Session =
     return {"rc_book_url": url}
 
 @router.post("/vehicle/{vehicle_id}/fc")
-async def upload_fc(vehicle_id: int, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_fc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
     vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
@@ -92,7 +92,7 @@ async def upload_fc(vehicle_id: int, file: UploadFile = File(...), db: Session =
     return {"fc_certificate_url": url}
 
 @router.post("/vehicle/{vehicle_id}/photo/{position}")
-async def upload_vehicle_photo(vehicle_id: int, position: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_vehicle_photo(vehicle_id: str, position: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
     vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
