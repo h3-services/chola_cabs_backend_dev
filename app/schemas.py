@@ -5,6 +5,13 @@ from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, ConfigDict
+from enum import Enum
+
+# Enums
+class KYCStatus(str, Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
 
 # Driver Schemas
 class DriverBase(BaseModel):
@@ -30,7 +37,7 @@ class DriverUpdate(BaseModel):
 
 class DriverResponse(DriverBase):
     driver_id: str
-    kyc_verified: bool
+    kyc_verified: KYCStatus
     photo_url: Optional[str] = None
     aadhar_url: Optional[str] = None
     licence_url: Optional[str] = None

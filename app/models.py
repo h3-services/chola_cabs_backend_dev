@@ -14,7 +14,7 @@ class Driver(Base):
     name = Column(String(100), nullable=False)
     phone_number = Column(BigInteger, nullable=True)
     email = Column(String(100), nullable=True)
-    kyc_verified = Column(Boolean, default=False)
+    kyc_verified = Column(String(20), default="pending")
     primary_location = Column(String(255), nullable=True)
     photo_url = Column(String(255), nullable=True)
     wallet_balance = Column(DECIMAL(10, 2), default=0.00)
