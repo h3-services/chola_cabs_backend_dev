@@ -21,7 +21,7 @@ def get_all_errors(
     return errors
 
 @router.get("/{error_id}", response_model=ErrorHandlingResponse)
-def get_error_by_id(error_id: int, db: Session = Depends(get_db)):
+def get_error_by_id(error_id: str, db: Session = Depends(get_db)):
     """Get error log by ID"""
     error = db.query(ErrorHandling).filter(ErrorHandling.error_id == error_id).first()
     if not error:
@@ -34,6 +34,8 @@ def get_error_by_id(error_id: int, db: Session = Depends(get_db)):
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=ErrorHandlingResponse)
 def create_error_log(error: ErrorHandlingCreate, db: Session = Depends(get_db)):
     """Create a new error log"""
+    import uuid
+    
     # Check if error_code already exists
     existing_error = db.query(ErrorHandling).filter(ErrorHandling.error_code == error.error_code).first()
     if existing_error:
@@ -42,7 +44,11 @@ def create_error_log(error: ErrorHandlingCreate, db: Session = Depends(get_db)):
             detail=f"Error code {error.error_code} already exists"
         )
     
-    db_error = ErrorHandling(**error.dict())
+    # Create error with UUID
+    error_data = error.model_dump()
+    error_data["error_id"] = str(uuid.uuid4())
+    
+    db_error = ErrorHandling(**error_data)
     db.add(db_error)
     db.commit()
     db.refresh(db_error)
@@ -52,7 +58,7 @@ def create_error_log(error: ErrorHandlingCreate, db: Session = Depends(get_db)):
 def link_error_to_entity(
     entity_type: str,  # "driver" or "vehicle" or "trip"
     entity_id: str,
-    error_id: int,
+    error_id: str,
     db: Session = Depends(get_db)
 ):
     """Link an error from error_handling table to driver/vehicle/trip"""
@@ -116,7 +122,7 @@ def link_error_to_entity(
 def unlink_error_from_entity(
     entity_type: str,
     entity_id: str,
-    error_id: int,
+    error_id: str,
     db: Session = Depends(get_db)
 ):
     """Remove error link from driver/vehicle/trip"""
@@ -204,7 +210,7 @@ def get_entity_errors(entity_type: str, entity_id: str, db: Session = Depends(ge
     }
 
 @router.delete("/{error_id}")
-def delete_error_log(error_id: int, db: Session = Depends(get_db)):
+def delete_error_log(error_id: str, db: Session = Depends(get_db)):
     """Delete an error log"""
     error = db.query(ErrorHandling).filter(ErrorHandling.error_id == error_id).first()
     if not error:

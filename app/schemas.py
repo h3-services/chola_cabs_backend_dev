@@ -260,7 +260,7 @@ class ErrorHandlingCreate(BaseModel):
     error_description: str
 
 class ErrorHandlingResponse(BaseModel):
-    error_id: int
+    error_id: str  # Changed to str to match UUID in database
     error_type: str
     error_code: int  # Changed to int
     error_description: str

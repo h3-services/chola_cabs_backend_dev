@@ -156,7 +156,7 @@ class VehicleTariffConfig(Base):
 class ErrorHandling(Base):
     __tablename__ = "error_handling"
     
-    error_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    error_id = Column(String(36), primary_key=True, index=True)  # Changed to String to match database
     error_type = Column(String(100), nullable=False)
     error_code = Column(Integer, nullable=False, unique=True)
     error_description = Column(Text, nullable=False)
