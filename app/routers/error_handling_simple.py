@@ -1,5 +1,5 @@
 """
-Error Handling API endpoints
+Simplified Error Handling API endpoints for testing
 """
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
