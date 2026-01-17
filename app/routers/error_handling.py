@@ -1,7 +1,7 @@
 """
 Error Handling API endpoints
 """
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -68,49 +68,98 @@ def create_error_log(error: ErrorHandlingCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.post("/assign-to-driver")
-def assign_error_to_driver(
+@router.post("/review-driver-registration")
+def review_driver_registration(
     driver_id: str,
-    error_code: int,
+    action: str,  # "approve" or "reject"
+    document_errors: List[dict] = None,  # [{"document_type": "licence", "error_message": "Blurry image"}]
     db: Session = Depends(get_db)
 ):
-    """Admin assigns error to driver (for document issues)"""
+    """Admin reviews driver registration and assigns document errors if rejecting"""
     try:
         # Get driver
         driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
         if not driver:
             raise HTTPException(status_code=404, detail="Driver not found")
         
-        # Get error details
-        error = db.query(ErrorHandling).filter(ErrorHandling.error_code == error_code).first()
-        if not error:
-            raise HTTPException(status_code=404, detail="Error code not found")
-        
-        # Initialize errors JSON if needed
-        if driver.errors is None:
+        if action == "approve":
+            # Approve driver and clear any existing errors
+            driver.is_approved = True
+            driver.errors = None  # Clear all errors
+            
+            db.commit()
+            db.refresh(driver)
+            
+            return {
+                "message": f"Driver {driver.name} approved successfully",
+                "driver_id": driver_id,
+                "status": "approved"
+            }
+            
+        elif action == "reject":
+            # Reject driver and assign document errors
+            driver.is_approved = False
+            
+            # Initialize errors JSON
             driver.errors = {"error_codes": [], "details": {}}
-        
-        # Add error if not already present
-        if error_code not in driver.errors.get("error_codes", []):
-            driver.errors["error_codes"].append(error_code)
-            driver.errors["details"][str(error_code)] = {
-                "error_type": error.error_type,
-                "error_description": error.error_description,
-                "assigned_at": error.created_at.isoformat()
+            
+            # Add document errors if provided
+            if document_errors:
+                import time
+                for doc_error in document_errors:
+                    error_code = int(f"9{int(time.time() * 1000) % 100000}")  # Unique code
+                    
+                    driver.errors["error_codes"].append(error_code)
+                    driver.errors["details"][str(error_code)] = {
+                        "error_type": "DOCUMENT",
+                        "document_type": doc_error.get("document_type"),
+                        "error_description": doc_error.get("error_message"),
+                        "assigned_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                        "status": "pending"
+                    }
+                    time.sleep(0.001)  # Ensure unique timestamps
+            
+            db.commit()
+            db.refresh(driver)
+            
+            return {
+                "message": f"Driver {driver.name} registration rejected",
+                "driver_id": driver_id,
+                "status": "rejected",
+                "errors_assigned": len(document_errors) if document_errors else 0,
+                "driver_errors": driver.errors
             }
         
-        db.commit()
-        db.refresh(driver)
-        
-        return {
-            "message": f"Error {error_code} assigned to driver {driver_id}",
-            "driver_errors": driver.errors
-        }
+        else:
+            raise HTTPException(status_code=400, detail="Action must be 'approve' or 'reject'")
+            
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.get("/document-types")
+def get_document_error_types():
+    """Get available document types for admin UI"""
+    return {
+        "document_types": [
+            {"value": "licence", "label": "Driving Licence"},
+            {"value": "aadhar", "label": "Aadhar Card"},
+            {"value": "photo", "label": "Profile Photo"},
+            {"value": "rc", "label": "RC Book"},
+            {"value": "fc", "label": "FC Certificate"},
+            {"value": "vehicle_photo", "label": "Vehicle Photos"}
+        ],
+        "common_errors": [
+            "Document is blurry or unclear",
+            "Document has expired",
+            "Document information doesn't match profile",
+            "Document is damaged or torn",
+            "Wrong document uploaded",
+            "Document is not readable"
+        ]
+    }
 
 @router.get("/driver/{driver_id}")
 def get_driver_errors(driver_id: str, db: Session = Depends(get_db)):
@@ -128,23 +177,39 @@ def get_driver_errors(driver_id: str, db: Session = Depends(get_db)):
                 "errors": []
             }
         
-        # Get full error details
+        # Get full error details with document info
         error_list = []
         for error_code in driver.errors.get("error_codes", []):
             error_detail = driver.errors.get("details", {}).get(str(error_code), {})
-            error_list.append({
+            error_item = {
                 "error_code": error_code,
                 "error_type": error_detail.get("error_type"),
                 "error_description": error_detail.get("error_description"),
-                "assigned_at": error_detail.get("assigned_at")
-            })
+                "assigned_at": error_detail.get("assigned_at"),
+                "status": error_detail.get("status", "pending")
+            }
+            
+            # Add document type if it's a document error
+            if error_detail.get("document_type"):
+                error_item["document_type"] = error_detail.get("document_type")
+                error_item["document_label"] = {
+                    "licence": "Driving Licence",
+                    "aadhar": "Aadhar Card", 
+                    "photo": "Profile Photo",
+                    "rc": "RC Book",
+                    "fc": "FC Certificate",
+                    "vehicle_photo": "Vehicle Photos"
+                }.get(error_detail.get("document_type"), error_detail.get("document_type"))
+            
+            error_list.append(error_item)
         
         return {
             "driver_id": driver_id,
             "driver_name": driver.name,
             "has_errors": len(error_list) > 0,
             "error_count": len(error_list),
-            "errors": error_list
+            "errors": error_list,
+            "message": "Please fix the document issues and re-upload" if error_list else "No errors found"
         }
     except HTTPException:
         raise

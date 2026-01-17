@@ -2,6 +2,7 @@
 Trip API endpoints
 """
 from typing import List
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
@@ -296,26 +297,166 @@ def get_trips_by_driver(driver_id: str, db: Session = Depends(get_db)):
         })
     return result
 
-@router.delete("/{trip_id}")
-def delete_trip(trip_id: str, db: Session = Depends(get_db)):
-    """Delete a trip"""
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Trip not found"
-        )
-    
-    # If trip has assigned driver, make them available again
-    if trip.assigned_driver_id:
-        driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-        if driver:
-            driver.is_available = True
-    
-    db.delete(trip)
-    db.commit()
-    
-    return {
-        "message": "Trip deleted successfully",
-        "trip_id": trip_id
-    }
+@router.get("/stats")
+def get_trip_statistics(db: Session = Depends(get_db)):
+    """Get trip statistics for admin dashboard"""
+    try:
+        total_trips = db.query(Trip).count()
+        pending_trips = db.query(Trip).filter(Trip.trip_status == "OPEN").count()
+        assigned_trips = db.query(Trip).filter(Trip.trip_status == "ASSIGNED").count()
+        started_trips = db.query(Trip).filter(Trip.trip_status == "STARTED").count()
+        completed_trips = db.query(Trip).filter(Trip.trip_status == "COMPLETED").count()
+        cancelled_trips = db.query(Trip).filter(Trip.trip_status == "CANCELLED").count()
+        
+        return {
+            "total_trips": total_trips,
+            "pending_trips": pending_trips,
+            "assigned_trips": assigned_trips,
+            "started_trips": started_trips,
+            "completed_trips": completed_trips,
+            "cancelled_trips": cancelled_trips,
+            "active_trips": assigned_trips + started_trips
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.get("/available-drivers")
+def get_available_drivers_for_trip(trip_id: str = None, db: Session = Depends(get_db)):
+    """Get available drivers for trip assignment"""
+    try:
+        # Get available and approved drivers
+        drivers = db.query(Driver).filter(
+            Driver.is_available == True,
+            Driver.is_approved == True
+        ).all()
+        
+        result = []
+        for driver in drivers:
+            result.append({
+                "driver_id": driver.driver_id,
+                "name": driver.name,
+                "phone_number": str(driver.phone_number) if driver.phone_number else None,
+                "primary_location": driver.primary_location,
+                "wallet_balance": float(driver.wallet_balance) if driver.wallet_balance else 0.0,
+                "is_available": driver.is_available,
+                "created_at": driver.created_at.isoformat() if driver.created_at else None
+            })
+        
+        return {
+            "available_drivers": result,
+            "total_available": len(result)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.post("/{trip_id}/cancel")
+def cancel_trip(trip_id: str, reason: str = "Cancelled by admin", db: Session = Depends(get_db)):
+    """Cancel a trip"""
+    try:
+        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found")
+        
+        if trip.trip_status in ["COMPLETED", "CANCELLED"]:
+            raise HTTPException(status_code=400, detail=f"Cannot cancel trip with status {trip.trip_status}")
+        
+        old_status = trip.trip_status
+        trip.trip_status = "CANCELLED"
+        
+        # Make assigned driver available again
+        if trip.assigned_driver_id:
+            driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+            if driver:
+                driver.is_available = True
+        
+        db.commit()
+        db.refresh(trip)
+        
+        return {
+            "message": "Trip cancelled successfully",
+            "trip_id": trip_id,
+            "old_status": old_status,
+            "new_status": "CANCELLED",
+            "reason": reason
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.post("/{trip_id}/start")
+def start_trip(trip_id: str, odo_start: int = None, db: Session = Depends(get_db)):
+    """Start a trip"""
+    try:
+        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found")
+        
+        if trip.trip_status != "ASSIGNED":
+            raise HTTPException(status_code=400, detail=f"Cannot start trip with status {trip.trip_status}")
+        
+        trip.trip_status = "STARTED"
+        trip.started_at = datetime.utcnow()
+        if odo_start:
+            trip.odo_start = odo_start
+        
+        db.commit()
+        db.refresh(trip)
+        
+        return {
+            "message": "Trip started successfully",
+            "trip_id": trip_id,
+            "status": "STARTED",
+            "started_at": trip.started_at.isoformat()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.post("/{trip_id}/complete")
+def complete_trip(
+    trip_id: str, 
+    odo_end: int = None, 
+    distance_km: float = None,
+    db: Session = Depends(get_db)
+):
+    """Complete a trip"""
+    try:
+        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found")
+        
+        if trip.trip_status != "STARTED":
+            raise HTTPException(status_code=400, detail=f"Cannot complete trip with status {trip.trip_status}")
+        
+        trip.trip_status = "COMPLETED"
+        trip.ended_at = datetime.utcnow()
+        if odo_end:
+            trip.odo_end = odo_end
+        if distance_km:
+            trip.distance_km = Decimal(str(distance_km))
+        
+        # Make driver available again
+        if trip.assigned_driver_id:
+            driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+            if driver:
+                driver.is_available = True
+        
+        db.commit()
+        db.refresh(trip)
+        
+        return {
+            "message": "Trip completed successfully",
+            "trip_id": trip_id,
+            "status": "COMPLETED",
+            "ended_at": trip.ended_at.isoformat(),
+            "distance_km": float(trip.distance_km) if trip.distance_km else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
