@@ -158,6 +158,6 @@ class ErrorHandling(Base):
     
     error_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     error_type = Column(String(100), nullable=False)
-    error_code = Column(String(50), nullable=False)
+    error_code = Column(Integer, nullable=False, unique=True)
     error_description = Column(Text, nullable=False)
     created_at = Column(DateTime, default=func.now())

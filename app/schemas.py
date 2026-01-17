@@ -256,13 +256,13 @@ class VehicleTariffConfigResponse(VehicleTariffConfigBase):
 # Error Handling Schemas
 class ErrorHandlingCreate(BaseModel):
     error_type: str
-    error_code: str
+    error_code: int  # Changed to int for unique numeric codes
     error_description: str
 
 class ErrorHandlingResponse(BaseModel):
     error_id: int
     error_type: str
-    error_code: str
+    error_code: int  # Changed to int
     error_description: str
     created_at: datetime
 
