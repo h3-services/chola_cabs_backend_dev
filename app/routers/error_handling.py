@@ -6,7 +6,8 @@ import uuid
 import time
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, flag_modified
+from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from app.database import get_db
 from app.models import ErrorHandling, Driver
 from app.schemas import ErrorHandlingCreate, ErrorHandlingResponse
