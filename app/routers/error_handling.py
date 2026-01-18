@@ -34,10 +34,14 @@ def get_all_errors(
     """Get all error logs"""
     try:
         errors = db.query(ErrorHandling).offset(skip).limit(limit).all()
+        logger.info(f"Retrieved {len(errors)} errors from database")
         return errors
     except Exception as e:
-        logger.error(f"Database error in get_all_errors: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Database error in get_all_errors: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )
 
 @router.get("/{error_id}", response_model=ErrorHandlingResponse)
 def get_error_by_id(error_id: str, db: Session = Depends(get_db)):
