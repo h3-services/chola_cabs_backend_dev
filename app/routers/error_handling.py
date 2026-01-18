@@ -44,6 +44,27 @@ def get_all_errors(
             detail=f"Internal server error: {str(e)}"
         )
 
+# Specific routes MUST come before generic /{error_id} route
+
+@router.get("/predefined-errors")
+def get_predefined_errors(db: Session = Depends(get_db)):
+    """Get all predefined errors for admin checkbox selection"""
+    try:
+        errors = db.query(ErrorHandling).all()
+        return {
+            "errors": [
+                {
+                    "error_code": error.error_code,
+                    "error_type": error.error_type,
+                    "error_description": error.error_description
+                }
+                for error in errors
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Database error in get_predefined_errors: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 @router.get("/{error_id}", response_model=ErrorHandlingResponse)
 def get_error_by_id(error_id: str, db: Session = Depends(get_db)):
     """Get error log by ID"""
@@ -163,24 +184,7 @@ def review_driver_documents(
         logger.error(f"Database error in review_driver_documents: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/predefined-errors")
-def get_predefined_errors(db: Session = Depends(get_db)):
-    """Get all predefined errors for admin checkbox selection"""
-    try:
-        errors = db.query(ErrorHandling).all()
-        return {
-            "errors": [
-                {
-                    "error_code": error.error_code,
-                    "error_type": error.error_type,
-                    "error_description": error.error_description
-                }
-                for error in errors
-            ]
-        }
-    except Exception as e:
-        logger.error(f"Database error in get_predefined_errors: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+# Moved to line 47 to fix route ordering
 
 @router.post("/assign-errors-to-driver")
 def assign_errors_to_driver(
