@@ -2,11 +2,26 @@
 Error Handling API endpoints
 """
 from typing import List, Optional
+import uuid
+import time
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, flag_modified
 from app.database import get_db
 from app.models import ErrorHandling, Driver
 from app.schemas import ErrorHandlingCreate, ErrorHandlingResponse
+
+# Document type mapping
+DOCUMENT_TYPE_LABELS = {
+    "licence": "Driving Licence",
+    "aadhar": "Aadhar Card",
+    "photo": "Profile Photo",
+    "rc": "RC Book",
+    "fc": "FC Certificate",
+    "vehicle_photo": "Vehicle Photos"
+}
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/errors", tags=["error-handling"])
 
@@ -21,7 +36,8 @@ def get_all_errors(
         errors = db.query(ErrorHandling).offset(skip).limit(limit).all()
         return errors
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        logger.error(f"Database error in get_all_errors: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/{error_id}", response_model=ErrorHandlingResponse)
 def get_error_by_id(error_id: str, db: Session = Depends(get_db)):
@@ -68,14 +84,14 @@ def create_error_log(error: ErrorHandlingCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.post("/review-driver-registration")
-def review_driver_registration(
+@router.post("/review-driver-documents")
+def review_driver_documents(
     driver_id: str,
     action: str,  # "approve" or "reject"
-    document_errors: List[dict] = None,  # [{"document_type": "licence", "error_message": "Blurry image"}]
+    selected_error_codes: List[int] = None,  # Error codes selected by admin checkboxes
     db: Session = Depends(get_db)
 ):
-    """Admin reviews driver registration and assigns document errors if rejecting"""
+    """Admin reviews driver documents and assigns predefined errors if rejecting"""
     try:
         # Get driver
         driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
@@ -85,7 +101,7 @@ def review_driver_registration(
         if action == "approve":
             # Approve driver and clear any existing errors
             driver.is_approved = True
-            driver.errors = None  # Clear all errors
+            driver.errors = None
             
             db.commit()
             db.refresh(driver)
@@ -97,28 +113,29 @@ def review_driver_registration(
             }
             
         elif action == "reject":
-            # Reject driver and assign document errors
-            driver.is_approved = False
+            if not selected_error_codes:
+                raise HTTPException(status_code=400, detail="Error codes required for rejection")
             
-            # Initialize errors JSON
+            # Get error details from ErrorHandling table
+            errors = db.query(ErrorHandling).filter(ErrorHandling.error_code.in_(selected_error_codes)).all()
+            if len(errors) != len(selected_error_codes):
+                raise HTTPException(status_code=400, detail="Some error codes not found")
+            
+            # Reject driver and assign selected errors
+            driver.is_approved = False
             driver.errors = {"error_codes": [], "details": {}}
             
-            # Add document errors if provided
-            if document_errors:
-                import time
-                for doc_error in document_errors:
-                    error_code = int(f"9{int(time.time() * 1000) % 100000}")  # Unique code
-                    
-                    driver.errors["error_codes"].append(error_code)
-                    driver.errors["details"][str(error_code)] = {
-                        "error_type": "DOCUMENT",
-                        "document_type": doc_error.get("document_type"),
-                        "error_description": doc_error.get("error_message"),
-                        "assigned_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                        "status": "pending"
-                    }
-                    time.sleep(0.001)  # Ensure unique timestamps
+            # Add selected errors
+            for error in errors:
+                driver.errors["error_codes"].append(error.error_code)
+                driver.errors["details"][str(error.error_code)] = {
+                    "error_type": error.error_type,
+                    "error_description": error.error_description,
+                    "assigned_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "status": "pending"
+                }
             
+            flag_modified(driver, 'errors')
             db.commit()
             db.refresh(driver)
             
@@ -126,7 +143,8 @@ def review_driver_registration(
                 "message": f"Driver {driver.name} registration rejected",
                 "driver_id": driver_id,
                 "status": "rejected",
-                "errors_assigned": len(document_errors) if document_errors else 0,
+                "errors_assigned": len(selected_error_codes),
+                "assigned_error_codes": selected_error_codes,
                 "driver_errors": driver.errors
             }
         
@@ -137,29 +155,81 @@ def review_driver_registration(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        logger.error(f"Database error in review_driver_documents: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
-@router.get("/document-types")
-def get_document_error_types():
-    """Get available document types for admin UI"""
-    return {
-        "document_types": [
-            {"value": "licence", "label": "Driving Licence"},
-            {"value": "aadhar", "label": "Aadhar Card"},
-            {"value": "photo", "label": "Profile Photo"},
-            {"value": "rc", "label": "RC Book"},
-            {"value": "fc", "label": "FC Certificate"},
-            {"value": "vehicle_photo", "label": "Vehicle Photos"}
-        ],
-        "common_errors": [
-            "Document is blurry or unclear",
-            "Document has expired",
-            "Document information doesn't match profile",
-            "Document is damaged or torn",
-            "Wrong document uploaded",
-            "Document is not readable"
-        ]
-    }
+@router.get("/predefined-errors")
+def get_predefined_errors(db: Session = Depends(get_db)):
+    """Get all predefined errors for admin checkbox selection"""
+    try:
+        errors = db.query(ErrorHandling).all()
+        return {
+            "errors": [
+                {
+                    "error_code": error.error_code,
+                    "error_type": error.error_type,
+                    "error_description": error.error_description
+                }
+                for error in errors
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Database error in get_predefined_errors: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@router.post("/assign-errors-to-driver")
+def assign_errors_to_driver(
+    driver_id: str,
+    error_codes: List[int],  # List of error codes selected by admin
+    db: Session = Depends(get_db)
+):
+    """Admin assigns predefined errors to driver by selecting checkboxes"""
+    try:
+        # Get driver
+        driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+        if not driver:
+            raise HTTPException(status_code=404, detail="Driver not found")
+        
+        # Get error details from ErrorHandling table
+        errors = db.query(ErrorHandling).filter(ErrorHandling.error_code.in_(error_codes)).all()
+        if len(errors) != len(error_codes):
+            raise HTTPException(status_code=400, detail="Some error codes not found")
+        
+        # Initialize or update driver errors
+        if not driver.errors:
+            driver.errors = {"error_codes": [], "details": {}}
+        
+        # Add new errors
+        for error in errors:
+            if error.error_code not in driver.errors["error_codes"]:
+                driver.errors["error_codes"].append(error.error_code)
+                driver.errors["details"][str(error.error_code)] = {
+                    "error_type": error.error_type,
+                    "error_description": error.error_description,
+                    "assigned_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "status": "pending"
+                }
+        
+        # Mark driver as not approved if errors assigned
+        driver.is_approved = False
+        flag_modified(driver, 'errors')
+        
+        db.commit()
+        db.refresh(driver)
+        
+        return {
+            "message": f"Assigned {len(error_codes)} errors to driver {driver.name}",
+            "driver_id": driver_id,
+            "assigned_errors": error_codes,
+            "driver_errors": driver.errors
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Database error in assign_errors_to_driver: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @router.get("/driver/{driver_id}")
 def get_driver_errors(driver_id: str, db: Session = Depends(get_db)):
@@ -192,14 +262,10 @@ def get_driver_errors(driver_id: str, db: Session = Depends(get_db)):
             # Add document type if it's a document error
             if error_detail.get("document_type"):
                 error_item["document_type"] = error_detail.get("document_type")
-                error_item["document_label"] = {
-                    "licence": "Driving Licence",
-                    "aadhar": "Aadhar Card", 
-                    "photo": "Profile Photo",
-                    "rc": "RC Book",
-                    "fc": "FC Certificate",
-                    "vehicle_photo": "Vehicle Photos"
-                }.get(error_detail.get("document_type"), error_detail.get("document_type"))
+                error_item["document_label"] = DOCUMENT_TYPE_LABELS.get(
+                    error_detail.get("document_type"), 
+                    error_detail.get("document_type")
+                )
             
             error_list.append(error_item)
         
@@ -236,6 +302,7 @@ def remove_error_from_driver(
         if str(error_code) in driver.errors.get("details", {}):
             del driver.errors["details"][str(error_code)]
         
+        flag_modified(driver, 'errors')
         db.commit()
         db.refresh(driver)
         
@@ -260,6 +327,7 @@ def delete_error_log(error_id: str, db: Session = Depends(get_db)):
                 detail="Error log not found"
             )
         
+        logger.info(f"Deleting error log: {error_id}")
         db.delete(error)
         db.commit()
         
