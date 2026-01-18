@@ -28,7 +28,7 @@ Table: drivers
   name                      varchar(100)                   NULL:YES   KEY:     
   phone_number              bigint                         NULL:YES   KEY:     
   email                     varchar(100)                   NULL:YES   KEY:     
-  kyc_verified              tinyint(1)                     NULL:YES   KEY:     
+  kyc_verified              varchar(20)                    NULL:YES   KEY:     
   primary_location          varchar(255)                   NULL:YES   KEY:     
   photo_url                 varchar(255)                   NULL:YES   KEY:     
   wallet_balance            decimal(10,2)                  NULL:YES   KEY:     
@@ -134,12 +134,12 @@ Table: vehicle_tariff_config
 ============================================================
 Data Counts
 ============================================================
-  drivers                        5 records
-  vehicles                       1 records
-  trips                          1 records
-  payment_transactions           1 records
-  wallet_transactions            1 records
-  vehicle_tariff_config          1 records
+  drivers                        9 records
+  vehicles                       8 records
+  trips                          8 records
+  payment_transactions           4 records
+  wallet_transactions            3 records
+  vehicle_tariff_config          3 records
 
 ============================================================
 Schema check complete!
