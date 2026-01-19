@@ -13,8 +13,8 @@ from app.models import Driver, Vehicle
 router = APIRouter(prefix="/api/v1/uploads", tags=["uploads"])
 
 # Configure upload directory
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "d:/cab_ap/uploads")
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000/uploads")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/root/cab_app/uploads")
+BASE_URL = os.getenv("BASE_URL", "https://api.cholacabs.in/uploads")
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
