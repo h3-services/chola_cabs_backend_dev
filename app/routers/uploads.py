@@ -10,9 +10,11 @@ from datetime import datetime
 from dotenv import load_dotenv
 from app.database import get_db
 from app.models import Driver, Vehicle
+import pathlib
 
-# Load environment variables
-load_dotenv()
+# Load environment variables with absolute path
+env_path = pathlib.Path(__file__).parent.parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
 
 router = APIRouter(prefix="/api/v1/uploads", tags=["uploads"])
 
@@ -24,6 +26,10 @@ def save_file(file: UploadFile, folder: str) -> str:
     # Load environment variables inside function to ensure .env is loaded
     UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/root/cab_app/uploads")
     BASE_URL = os.getenv("BASE_URL", "https://api.cholacabs.in/uploads")
+    
+    # Debug: print what we got
+    print(f"[DEBUG] UPLOAD_DIR: {UPLOAD_DIR}")
+    print(f"[DEBUG] BASE_URL: {BASE_URL}")
     
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
