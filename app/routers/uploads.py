@@ -7,8 +7,12 @@ from typing import Optional
 import os
 import shutil
 from datetime import datetime
+from dotenv import load_dotenv
 from app.database import get_db
 from app.models import Driver, Vehicle
+
+# Load environment variables
+load_dotenv()
 
 router = APIRouter(prefix="/api/v1/uploads", tags=["uploads"])
 
