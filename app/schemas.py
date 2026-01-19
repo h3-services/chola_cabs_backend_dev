@@ -268,3 +268,54 @@ class ErrorHandlingResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# Admin Schemas
+class AdminRole(str, Enum):
+    SUPER_ADMIN = "SUPER_ADMIN"
+    ADMIN = "ADMIN"
+
+class AdminBase(BaseModel):
+    name: Optional[str] = None
+    phone_number: int
+    role: AdminRole = AdminRole.ADMIN
+
+class AdminCreate(AdminBase):
+    """Schema for creating a new admin (SUPER_ADMIN only)"""
+    pass
+
+class AdminUpdate(BaseModel):
+    """Schema for updating admin details"""
+    name: Optional[str] = None
+    phone_number: Optional[int] = None
+    role: Optional[AdminRole] = None
+    is_active: Optional[bool] = None
+
+class AdminResponse(BaseModel):
+    """Schema for admin response"""
+    admin_id: str
+    name: Optional[str] = None
+    phone_number: int
+    role: str
+    is_active: bool
+    last_login_at: Optional[datetime] = None
+    created_by: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AdminLoginRequest(BaseModel):
+    """Schema for admin login - send OTP"""
+    phone_number: int
+
+class AdminVerifyOTPRequest(BaseModel):
+    """Schema for OTP verification"""
+    phone_number: int
+    otp: str
+
+class AdminLoginResponse(BaseModel):
+    """Schema for successful login response"""
+    access_token: str
+    token_type: str = "bearer"
+    admin: AdminResponse

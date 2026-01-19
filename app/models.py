@@ -161,3 +161,19 @@ class ErrorHandling(Base):
     error_code = Column(Integer, nullable=False, unique=True)
     error_description = Column(Text, nullable=False)
     created_at = Column(DateTime, default=func.now())
+
+class Admin(Base):
+    __tablename__ = "admins"
+    
+    admin_id = Column(String(36), primary_key=True, index=True)
+    name = Column(String(100), nullable=True)
+    phone_number = Column(BigInteger, nullable=False, unique=True)
+    role = Column(String(20), nullable=False, default="ADMIN")  # SUPER_ADMIN, ADMIN
+    is_active = Column(Boolean, default=True)
+    last_login_at = Column(DateTime, nullable=True)
+    created_by = Column(String(36), ForeignKey("admins.admin_id"), nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Self-referential relationship
+    creator = relationship("Admin", remote_side=[admin_id], backref="created_admins")
