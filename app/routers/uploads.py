@@ -23,7 +23,7 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
 def save_file(file: UploadFile, folder: str) -> str:
     """Save uploaded file and return URL"""
     # Load environment variables inside function to ensure .env is loaded
-    UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/root/cab_app/uploads")
+    UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/root/chola_cabs_backend_dev/uploads")
     BASE_URL = os.getenv("BASE_URL", "https://api.cholacabs.in/uploads")
     
     ext = os.path.splitext(file.filename)[1].lower()
