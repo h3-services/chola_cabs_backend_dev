@@ -104,8 +104,8 @@ def update_request_status(
     new_status: str,
     db: Session = Depends(get_db)
 ):
-    """Update request status (PENDING/ACCEPTED/REJECTED)"""
-    if new_status not in ["PENDING", "ACCEPTED", "REJECTED"]:
+    """Update request status (PENDING/ACCEPTED/REJECTED/CANCELLED)"""
+    if new_status not in ["PENDING", "ACCEPTED", "REJECTED", "CANCELLED"]:
         raise HTTPException(status_code=400, detail="Invalid status")
     
     request = db.query(TripDriverRequest).filter(
@@ -206,6 +206,29 @@ def get_requests_by_driver(driver_id: str, db: Session = Depends(get_db)):
             "created_at": req.created_at.isoformat() if req.created_at else None
         })
     return result
+
+@router.patch("/{request_id}/cancel")
+def cancel_request(request_id: str, db: Session = Depends(get_db)):
+    """Cancel a trip driver request"""
+    request = db.query(TripDriverRequest).filter(
+        TripDriverRequest.request_id == request_id
+    ).first()
+    
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    
+    if request.status in ["ACCEPTED", "REJECTED"]:
+        raise HTTPException(status_code=400, detail=f"Cannot cancel request with status {request.status}")
+    
+    request.status = "CANCELLED"
+    db.commit()
+    db.refresh(request)
+    
+    return {
+        "message": "Request cancelled successfully",
+        "request_id": request_id,
+        "status": "CANCELLED"
+    }
 
 @router.delete("/{request_id}")
 def delete_request(request_id: str, db: Session = Depends(get_db)):
