@@ -104,8 +104,8 @@ def get_api_stats():
         total_vehicles = db.query(Vehicle).count()
         approved_vehicles = db.query(Vehicle).filter(Vehicle.vehicle_approved == True).count()
         total_trips = db.query(Trip).count()
-        pending_trips = db.query(Trip).filter(Trip.trip_status == "pending").count()
-        completed_trips = db.query(Trip).filter(Trip.trip_status == "completed").count()
+        pending_trips = db.query(Trip).filter(Trip.trip_status == "OPEN").count()
+        completed_trips = db.query(Trip).filter(Trip.trip_status == "COMPLETED").count()
         
         db.close()
         

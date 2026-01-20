@@ -130,6 +130,9 @@ class TripUpdate(BaseModel):
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
 
+class TripStatusUpdate(BaseModel):
+    status: str
+
 class TripResponse(TripBase):
     trip_id: str
     assigned_driver_id: Optional[str] = None

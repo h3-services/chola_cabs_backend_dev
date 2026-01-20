@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.database import get_db
 from app.models import Trip, Driver, TripDriverRequest, VehicleTariffConfig
-from app.schemas import TripCreate, TripUpdate, TripResponse, TripDriverRequestCreate, TripDriverRequestUpdate
+from app.schemas import TripCreate, TripUpdate, TripResponse, TripDriverRequestCreate, TripDriverRequestUpdate, TripStatusUpdate
 from decimal import Decimal
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -199,7 +199,7 @@ def assign_driver_to_trip(
     
     # Assign driver to trip
     trip.assigned_driver_id = driver_id
-    trip.trip_status = "assigned"
+    trip.trip_status = "ASSIGNED"
     trip.is_manual_assignment = True
     
     # Make driver unavailable
@@ -219,13 +219,13 @@ def assign_driver_to_trip(
 @router.patch("/{trip_id}/status")
 def update_trip_status(
     trip_id: str, 
-    new_status: str, 
+    status_update: TripStatusUpdate, 
     db: Session = Depends(get_db)
 ):
     """Update trip status"""
-    valid_statuses = ["pending", "assigned", "started", "completed", "cancelled"]
+    valid_statuses = ["OPEN", "ASSIGNED", "STARTED", "COMPLETED", "CANCELLED"]
     
-    if new_status not in valid_statuses:
+    if status_update.status not in valid_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid status. Valid statuses: {', '.join(valid_statuses)}"
@@ -239,10 +239,10 @@ def update_trip_status(
         )
     
     old_status = trip.trip_status
-    trip.trip_status = new_status
+    trip.trip_status = status_update.status
     
     # If trip is completed or cancelled, make driver available again
-    if new_status in ["completed", "cancelled"] and trip.assigned_driver_id:
+    if status_update.status in ["COMPLETED", "CANCELLED"] and trip.assigned_driver_id:
         driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
         if driver:
             driver.is_available = True
@@ -251,10 +251,10 @@ def update_trip_status(
     db.refresh(trip)
     
     return {
-        "message": f"Trip status updated from {old_status} to {new_status}",
+        "message": f"Trip status updated from {old_status} to {status_update.status}",
         "trip_id": trip_id,
         "old_status": old_status,
-        "new_status": new_status
+        "new_status": status_update.status
     }
 
 @router.get("/driver/{driver_id}")
