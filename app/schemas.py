@@ -37,11 +37,9 @@ class DriverUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     primary_location: Optional[str] = None
-    is_available: Optional[bool] = None
     licence_number: Optional[str] = None
     aadhar_number: Optional[str] = None
     licence_expiry: Optional[date] = None
-    kyc_verified: Optional[KYCStatus] = None
 
 class DriverResponse(DriverBase):
     driver_id: str
