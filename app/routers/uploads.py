@@ -122,7 +122,7 @@ async def reupload_driver_photo(driver_id: str, file: UploadFile = File(...), db
     if not driver:
         raise HTTPException(404, "Driver not found")
     
-    url = save_file(file, "drivers/photos", "driver", driver_id, "photo")
+    url = save_file(file, "drivers/photos")
     driver.photo_url = url
     db.commit()
     return {"photo_url": url, "message": "Driver photo re-uploaded successfully"}
@@ -133,7 +133,7 @@ async def reupload_aadhar(driver_id: str, file: UploadFile = File(...), db: Sess
     if not driver:
         raise HTTPException(404, "Driver not found")
     
-    url = save_file(file, "drivers/aadhar", "driver", driver_id, "aadhar")
+    url = save_file(file, "drivers/aadhar")
     driver.aadhar_url = url
     db.commit()
     return {"aadhar_url": url, "message": "Aadhar document re-uploaded successfully"}
@@ -144,7 +144,7 @@ async def reupload_licence(driver_id: str, file: UploadFile = File(...), db: Ses
     if not driver:
         raise HTTPException(404, "Driver not found")
     
-    url = save_file(file, "drivers/licence", "driver", driver_id, "licence")
+    url = save_file(file, "drivers/licence")
     driver.licence_url = url
     db.commit()
     return {"licence_url": url, "message": "Licence document re-uploaded successfully"}
@@ -155,7 +155,7 @@ async def reupload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    url = save_file(file, "vehicles/rc", "vehicle", vehicle_id, "rc")
+    url = save_file(file, "vehicles/rc")
     vehicle.rc_book_url = url
     db.commit()
     return {"rc_book_url": url, "message": "RC book re-uploaded successfully"}
@@ -166,7 +166,7 @@ async def reupload_fc(vehicle_id: str, file: UploadFile = File(...), db: Session
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    url = save_file(file, "vehicles/fc", "vehicle", vehicle_id, "fc")
+    url = save_file(file, "vehicles/fc")
     vehicle.fc_certificate_url = url
     db.commit()
     return {"fc_certificate_url": url, "message": "FC certificate re-uploaded successfully"}
@@ -180,7 +180,7 @@ async def reupload_vehicle_photo(vehicle_id: str, position: str, file: UploadFil
     if position not in ["front", "back", "left", "right"]:
         raise HTTPException(400, "Invalid position")
     
-    url = save_file(file, f"vehicles/{position}", "vehicle", vehicle_id, position)
+    url = save_file(file, f"vehicles/{position}")
     setattr(vehicle, f"vehicle_{position}_url", url)
     db.commit()
     return {f"vehicle_{position}_url": url, "message": f"Vehicle {position} photo re-uploaded successfully"}
