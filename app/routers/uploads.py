@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from typing import Optional
 import os
 import shutil
-from datetime import datetime
 from dotenv import load_dotenv
 from app.database import get_db
 from app.models import Driver, Vehicle
@@ -27,16 +26,16 @@ def save_file(file: UploadFile, folder: str) -> str:
     UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/root/cab_app/uploads")
     BASE_URL = os.getenv("BASE_URL", "https://api.cholacabs.in/uploads")
     
-    # Debug: print what we got
-    print(f"[DEBUG] UPLOAD_DIR: {UPLOAD_DIR}")
-    print(f"[DEBUG] BASE_URL: {BASE_URL}")
-    
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, "Invalid file type")
     
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{timestamp}_{file.filename}"
+    # Remove timestamp prefix if present
+    filename = file.filename
+    if '_' in filename and len(filename.split('_')[0]) == 8:
+        parts = filename.split('_')
+        if len(parts) >= 3 and parts[0].isdigit() and parts[1].isdigit():
+            filename = '_'.join(parts[2:])
     folder_path = os.path.join(UPLOAD_DIR, folder)
     os.makedirs(folder_path, exist_ok=True)
     
@@ -123,7 +122,7 @@ async def reupload_driver_photo(driver_id: str, file: UploadFile = File(...), db
     if not driver:
         raise HTTPException(404, "Driver not found")
     
-    url = save_file(file, "drivers/photos")
+    url = save_file(file, "drivers/photos", "driver", driver_id, "photo")
     driver.photo_url = url
     db.commit()
     return {"photo_url": url, "message": "Driver photo re-uploaded successfully"}
@@ -134,7 +133,7 @@ async def reupload_aadhar(driver_id: str, file: UploadFile = File(...), db: Sess
     if not driver:
         raise HTTPException(404, "Driver not found")
     
-    url = save_file(file, "drivers/aadhar")
+    url = save_file(file, "drivers/aadhar", "driver", driver_id, "aadhar")
     driver.aadhar_url = url
     db.commit()
     return {"aadhar_url": url, "message": "Aadhar document re-uploaded successfully"}
@@ -145,7 +144,7 @@ async def reupload_licence(driver_id: str, file: UploadFile = File(...), db: Ses
     if not driver:
         raise HTTPException(404, "Driver not found")
     
-    url = save_file(file, "drivers/licence")
+    url = save_file(file, "drivers/licence", "driver", driver_id, "licence")
     driver.licence_url = url
     db.commit()
     return {"licence_url": url, "message": "Licence document re-uploaded successfully"}
@@ -156,7 +155,7 @@ async def reupload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    url = save_file(file, "vehicles/rc")
+    url = save_file(file, "vehicles/rc", "vehicle", vehicle_id, "rc")
     vehicle.rc_book_url = url
     db.commit()
     return {"rc_book_url": url, "message": "RC book re-uploaded successfully"}
@@ -167,7 +166,7 @@ async def reupload_fc(vehicle_id: str, file: UploadFile = File(...), db: Session
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    url = save_file(file, "vehicles/fc")
+    url = save_file(file, "vehicles/fc", "vehicle", vehicle_id, "fc")
     vehicle.fc_certificate_url = url
     db.commit()
     return {"fc_certificate_url": url, "message": "FC certificate re-uploaded successfully"}
@@ -181,7 +180,7 @@ async def reupload_vehicle_photo(vehicle_id: str, position: str, file: UploadFil
     if position not in ["front", "back", "left", "right"]:
         raise HTTPException(400, "Invalid position")
     
-    url = save_file(file, f"vehicles/{position}")
+    url = save_file(file, f"vehicles/{position}", "vehicle", vehicle_id, position)
     setattr(vehicle, f"vehicle_{position}_url", url)
     db.commit()
     return {f"vehicle_{position}_url": url, "message": f"Vehicle {position} photo re-uploaded successfully"}
