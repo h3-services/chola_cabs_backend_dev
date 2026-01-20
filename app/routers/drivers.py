@@ -220,6 +220,32 @@ def get_driver_wallet_balance(driver_id: str, db: Session = Depends(get_db)):
         "name": driver.name
     }
 
+@router.patch("/{driver_id}/wallet-balance")
+def update_wallet_balance(
+    driver_id: str,
+    new_balance: float,
+    db: Session = Depends(get_db)
+):
+    """Direct wallet balance update (Admin only)"""
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Driver not found"
+        )
+    
+    old_balance = float(driver.wallet_balance) if driver.wallet_balance else 0.0
+    driver.wallet_balance = new_balance
+    db.commit()
+    db.refresh(driver)
+    
+    return {
+        "message": "Wallet balance updated successfully",
+        "driver_id": driver_id,
+        "old_balance": old_balance,
+        "new_balance": new_balance
+    }
+
 @router.delete("/{driver_id}")
 def delete_driver(driver_id: str, db: Session = Depends(get_db)):
     """Delete a driver"""

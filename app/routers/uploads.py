@@ -114,3 +114,74 @@ async def upload_vehicle_photo(vehicle_id: str, position: str, file: UploadFile 
     setattr(vehicle, f"vehicle_{position}_url", url)
     db.commit()
     return {f"vehicle_{position}_url": url}
+
+# RE-UPLOAD ENDPOINTS (PUT methods)
+
+@router.put("/driver/{driver_id}/photo")
+async def reupload_driver_photo(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(404, "Driver not found")
+    
+    url = save_file(file, "drivers/photos")
+    driver.photo_url = url
+    db.commit()
+    return {"photo_url": url, "message": "Driver photo re-uploaded successfully"}
+
+@router.put("/driver/{driver_id}/aadhar")
+async def reupload_aadhar(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(404, "Driver not found")
+    
+    url = save_file(file, "drivers/aadhar")
+    driver.aadhar_url = url
+    db.commit()
+    return {"aadhar_url": url, "message": "Aadhar document re-uploaded successfully"}
+
+@router.put("/driver/{driver_id}/licence")
+async def reupload_licence(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(404, "Driver not found")
+    
+    url = save_file(file, "drivers/licence")
+    driver.licence_url = url
+    db.commit()
+    return {"licence_url": url, "message": "Licence document re-uploaded successfully"}
+
+@router.put("/vehicle/{vehicle_id}/rc")
+async def reupload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
+    if not vehicle:
+        raise HTTPException(404, "Vehicle not found")
+    
+    url = save_file(file, "vehicles/rc")
+    vehicle.rc_book_url = url
+    db.commit()
+    return {"rc_book_url": url, "message": "RC book re-uploaded successfully"}
+
+@router.put("/vehicle/{vehicle_id}/fc")
+async def reupload_fc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
+    if not vehicle:
+        raise HTTPException(404, "Vehicle not found")
+    
+    url = save_file(file, "vehicles/fc")
+    vehicle.fc_certificate_url = url
+    db.commit()
+    return {"fc_certificate_url": url, "message": "FC certificate re-uploaded successfully"}
+
+@router.put("/vehicle/{vehicle_id}/photo/{position}")
+async def reupload_vehicle_photo(vehicle_id: str, position: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
+    if not vehicle:
+        raise HTTPException(404, "Vehicle not found")
+    
+    if position not in ["front", "back", "left", "right"]:
+        raise HTTPException(400, "Invalid position")
+    
+    url = save_file(file, f"vehicles/{position}")
+    setattr(vehicle, f"vehicle_{position}_url", url)
+    db.commit()
+    return {f"vehicle_{position}_url": url, "message": f"Vehicle {position} photo re-uploaded successfully"}
