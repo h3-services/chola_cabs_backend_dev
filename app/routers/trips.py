@@ -416,6 +416,44 @@ def start_trip(trip_id: str, odo_start: int = None, db: Session = Depends(get_db
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+@router.patch("/{trip_id}/odometer-start")
+def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(get_db)):
+    """Update trip starting odometer reading"""
+    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    trip.odo_start = odo_start
+    db.commit()
+    
+    return {
+        "message": "Odometer start updated successfully",
+        "trip_id": trip_id,
+        "odo_start": odo_start
+    }
+
+@router.patch("/{trip_id}/odometer-end")
+def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db)):
+    """Update trip ending odometer reading"""
+    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    trip.odo_end = odo_end
+    
+    # Auto-calculate distance if both readings available
+    if trip.odo_start and trip.odo_end:
+        trip.distance_km = Decimal(str(trip.odo_end - trip.odo_start))
+    
+    db.commit()
+    
+    return {
+        "message": "Odometer end updated successfully",
+        "trip_id": trip_id,
+        "odo_end": odo_end,
+        "distance_km": float(trip.distance_km) if trip.distance_km else None
+    }
+
 @router.post("/{trip_id}/complete")
 def complete_trip(
     trip_id: str, 
