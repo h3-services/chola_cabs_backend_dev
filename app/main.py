@@ -58,6 +58,18 @@ app.include_router(trip_requests.router, prefix="/api/v1")
 app.include_router(admins.router)
 app.include_router(uploads.router)
 
+@app.get("/test-file/{filename}")
+def test_file_exists(filename: str):
+    """Test if uploaded file exists"""
+    import os
+    file_path = f"/root/chola_cabs_backend_dev/uploads/drivers/photos/{filename}"
+    exists = os.path.exists(file_path)
+    if exists:
+        size = os.path.getsize(file_path)
+        return {"exists": True, "path": file_path, "size": size}
+    else:
+        return {"exists": False, "path": file_path}
+
 @app.get("/")
 def read_root():
     """Root endpoint with API information"""
