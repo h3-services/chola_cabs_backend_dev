@@ -41,7 +41,7 @@ except Exception as e:
     print(f"[ERROR] Error creating database tables: {e}")
 
 # Mount static files for uploads
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "d:/cab_ap/uploads")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/root/chola_cabs_backend_dev/uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
