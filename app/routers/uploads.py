@@ -3,7 +3,6 @@ File upload router for KYC documents and photos
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.attributes import flag_modified
 from typing import Optional
 import os
 import shutil
@@ -190,17 +189,3 @@ async def reupload_vehicle_photo(vehicle_id: str, position: str, file: UploadFil
     setattr(vehicle, f"vehicle_{position}_url", url)
     db.commit()
     return {f"vehicle_{position}_url": url, "message": f"Vehicle {position} photo re-uploaded successfully"}
-
-@router.patch("/driver/{driver_id}/clear-errors")
-async def clear_driver_errors(driver_id: str, db: Session = Depends(get_db)):
-    """Clear all errors for driver"""
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
-    if not driver:
-        raise HTTPException(404, "Driver not found")
-    
-    driver.errors = None
-    driver.is_approved = True
-    flag_modified(driver, 'errors')
-    db.commit()
-    
-    return {"message": "Driver errors cleared", "driver_id": driver_id}

@@ -263,3 +263,22 @@ def delete_driver(driver_id: str, db: Session = Depends(get_db)):
         "message": "Driver deleted successfully",
         "driver_id": driver_id
     }
+
+@router.patch("/{driver_id}/clear-errors")
+def clear_driver_errors(driver_id: str, db: Session = Depends(get_db)):
+    """Clear all errors for driver"""
+    from sqlalchemy.orm.attributes import flag_modified
+    
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Driver not found"
+        )
+    
+    driver.errors = None
+    driver.is_approved = True
+    flag_modified(driver, 'errors')
+    db.commit()
+    
+    return {"message": "Driver errors cleared", "driver_id": driver_id}
