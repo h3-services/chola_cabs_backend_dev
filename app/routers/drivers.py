@@ -2,7 +2,7 @@
 Driver API endpoints
 """
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app.database import get_db
@@ -188,7 +188,7 @@ def update_kyc_status(
 @router.patch("/{driver_id}/approve")
 def approve_driver(
     driver_id: str,
-    is_approved: bool,
+    is_approved: bool = Query(..., description="Set to true to approve driver, false to disapprove"),
     db: Session = Depends(get_db)
 ):
     """Admin endpoint to approve/disapprove driver"""
