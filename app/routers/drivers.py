@@ -4,9 +4,13 @@ Driver API endpoints
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
 from app.database import get_db
 from app.models import Driver, Vehicle, Trip
 from app.schemas import DriverCreate, DriverUpdate, DriverResponse
+
+class ApprovalRequest(BaseModel):
+    is_approved: bool
 
 router = APIRouter(prefix="/drivers", tags=["drivers"])
 
@@ -184,7 +188,7 @@ def update_kyc_status(
 @router.patch("/{driver_id}/approve")
 def approve_driver(
     driver_id: str,
-    is_approved: bool,
+    approval_data: ApprovalRequest,
     db: Session = Depends(get_db)
 ):
     """Admin endpoint to approve/disapprove driver"""
@@ -195,15 +199,15 @@ def approve_driver(
             detail="Driver not found"
         )
     
-    driver.is_approved = is_approved
+    driver.is_approved = approval_data.is_approved
     db.commit()
     db.refresh(driver)
     
-    status_text = "approved" if is_approved else "disapproved"
+    status_text = "approved" if approval_data.is_approved else "disapproved"
     return {
         "message": f"Driver {status_text} successfully",
         "driver_id": driver_id,
-        "is_approved": is_approved
+        "is_approved": approval_data.is_approved
     }
 
 @router.get("/{driver_id}/wallet-balance")
