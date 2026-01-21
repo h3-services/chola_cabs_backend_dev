@@ -24,7 +24,7 @@ def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id:
     """Save uploaded file and return URL"""
     # Load environment variables inside function to ensure .env is loaded
     UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/root/chola_cabs_backend_dev/uploads")
-    BASE_URL = os.getenv("BASE_URL", "https://api.cholacabs.in/uploads")
+    BASE_URL = "https://api.cholacabs.in/uploads"  # Fixed domain URL
     
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
