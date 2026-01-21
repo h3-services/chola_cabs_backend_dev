@@ -188,7 +188,7 @@ def update_kyc_status(
 @router.patch("/{driver_id}/approve")
 def approve_driver(
     driver_id: str,
-    approval_data: ApprovalRequest,
+    is_approved: bool,
     db: Session = Depends(get_db)
 ):
     """Admin endpoint to approve/disapprove driver"""
@@ -199,15 +199,15 @@ def approve_driver(
             detail="Driver not found"
         )
     
-    driver.is_approved = approval_data.is_approved
+    driver.is_approved = is_approved
     db.commit()
     db.refresh(driver)
     
-    status_text = "approved" if approval_data.is_approved else "disapproved"
+    status_text = "approved" if is_approved else "disapproved"
     return {
         "message": f"Driver {status_text} successfully",
         "driver_id": driver_id,
-        "is_approved": approval_data.is_approved
+        "is_approved": is_approved
     }
 
 @router.get("/{driver_id}/wallet-balance")
