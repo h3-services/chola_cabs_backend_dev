@@ -127,14 +127,24 @@ class TripCreate(TripBase):
     pass
 
 class TripUpdate(BaseModel):
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    pickup_address: Optional[str] = None
+    drop_address: Optional[str] = None
+    trip_type: Optional[str] = None
+    vehicle_type: Optional[str] = None
     trip_status: Optional[str] = None
-    assigned_driver_id: Optional[int] = None
+    assigned_driver_id: Optional[str] = None
     distance_km: Optional[Decimal] = None
     fare: Optional[Decimal] = None
     odo_start: Optional[int] = None
     odo_end: Optional[int] = None
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
+    planned_start_at: Optional[datetime] = None
+    planned_end_at: Optional[datetime] = None
+    is_manual_assignment: Optional[bool] = None
+    passenger_count: Optional[int] = None
 
 class TripStatusUpdate(BaseModel):
     status: str
