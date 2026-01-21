@@ -142,7 +142,7 @@ def update_trip(
     trip_update: TripUpdate, 
     db: Session = Depends(get_db)
 ):
-    """Update trip information"""
+    """Full trip edit for admin panel"""
     trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
     if not trip:
         raise HTTPException(
@@ -159,6 +159,27 @@ def update_trip(
     
     return {
         "trip_id": trip.trip_id,
+        "customer_name": trip.customer_name,
+        "customer_phone": trip.customer_phone,
+        "pickup_address": trip.pickup_address,
+        "drop_address": trip.drop_address,
+        "trip_type": trip.trip_type,
+        "vehicle_type": trip.vehicle_type,
+        "assigned_driver_id": trip.assigned_driver_id,
+        "trip_status": trip.trip_status,
+        "distance_km": float(trip.distance_km) if trip.distance_km else None,
+        "odo_start": trip.odo_start,
+        "odo_end": trip.odo_end,
+        "fare": float(trip.fare) if trip.fare else None,
+        "started_at": trip.started_at.isoformat() if trip.started_at else None,
+        "ended_at": trip.ended_at.isoformat() if trip.ended_at else None,
+        "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
+        "planned_end_at": trip.planned_end_at.isoformat() if trip.planned_end_at else None,
+        "is_manual_assignment": trip.is_manual_assignment,
+        "passenger_count": trip.passenger_count,
+        "errors": trip.errors,
+        "created_at": trip.created_at.isoformat() if trip.created_at else None,
+        "updated_at": trip.updated_at.isoformat() if trip.updated_at else None,
         "message": "Trip updated successfully"
     }
 
