@@ -26,6 +26,8 @@ def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id:
     UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/root/chola_cabs_backend_dev/uploads")
     BASE_URL = "https://api.cholacabs.in/uploads"  # Fixed domain URL
     
+    print(f"[DEBUG] UPLOAD_DIR: {UPLOAD_DIR}")
+    
     ext = os.path.splitext(file.filename)[1].lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(400, "Invalid file type")
@@ -42,11 +44,20 @@ def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id:
                 filename = '_'.join(parts[2:])
     
     folder_path = os.path.join(UPLOAD_DIR, folder)
+    print(f"[DEBUG] Creating folder: {folder_path}")
     os.makedirs(folder_path, exist_ok=True)
     
     file_path = os.path.join(folder_path, filename)
+    print(f"[DEBUG] Saving file to: {file_path}")
+    
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+    
+    # Verify file was created
+    if os.path.exists(file_path):
+        print(f"[DEBUG] File created successfully: {file_path}")
+    else:
+        print(f"[ERROR] File not created: {file_path}")
     
     return f"{BASE_URL}/{folder}/{filename}"
 
