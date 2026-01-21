@@ -56,7 +56,7 @@ async def upload_driver_photo(driver_id: str, file: UploadFile = File(...), db: 
     if not driver:
         raise HTTPException(404, "Driver not found")
     
-    url = save_file(file, "drivers/photos")
+    url = save_file(file, "drivers/photos", "driver", driver_id, "photo")
     driver.photo_url = url
     db.commit()
     return {"photo_url": url}
@@ -67,7 +67,7 @@ async def upload_aadhar(driver_id: str, file: UploadFile = File(...), db: Sessio
     if not driver:
         raise HTTPException(404, "Driver not found")
     
-    url = save_file(file, "drivers/aadhar")
+    url = save_file(file, "drivers/aadhar", "driver", driver_id, "aadhar")
     driver.aadhar_url = url
     db.commit()
     return {"aadhar_url": url}
@@ -78,7 +78,7 @@ async def upload_licence(driver_id: str, file: UploadFile = File(...), db: Sessi
     if not driver:
         raise HTTPException(404, "Driver not found")
     
-    url = save_file(file, "drivers/licence")
+    url = save_file(file, "drivers/licence", "driver", driver_id, "licence")
     driver.licence_url = url
     db.commit()
     return {"licence_url": url}
@@ -89,7 +89,7 @@ async def upload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session =
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    url = save_file(file, "vehicles/rc")
+    url = save_file(file, "vehicles/rc", "vehicle", vehicle_id, "rc")
     vehicle.rc_book_url = url
     db.commit()
     return {"rc_book_url": url}
@@ -100,7 +100,7 @@ async def upload_fc(vehicle_id: str, file: UploadFile = File(...), db: Session =
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    url = save_file(file, "vehicles/fc")
+    url = save_file(file, "vehicles/fc", "vehicle", vehicle_id, "fc")
     vehicle.fc_certificate_url = url
     db.commit()
     return {"fc_certificate_url": url}
@@ -114,7 +114,7 @@ async def upload_vehicle_photo(vehicle_id: str, position: str, file: UploadFile 
     if position not in ["front", "back", "left", "right"]:
         raise HTTPException(400, "Invalid position")
     
-    url = save_file(file, f"vehicles/{position}")
+    url = save_file(file, f"vehicles/{position}", "vehicle", vehicle_id, position)
     setattr(vehicle, f"vehicle_{position}_url", url)
     db.commit()
     return {f"vehicle_{position}_url": url}
