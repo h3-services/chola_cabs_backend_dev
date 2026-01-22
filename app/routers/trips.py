@@ -37,18 +37,18 @@ def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, o
             distance = float(trip.distance_km)
             
             if trip.trip_type and trip.trip_type.upper() == "ONE_WAY":
-                per_km_rate = tariff_config.one_way_per_km or 0
-                min_km = tariff_config.one_way_min_km or 0
+                per_km_rate = float(tariff_config.one_way_per_km or 0)
+                min_km = float(tariff_config.one_way_min_km or 0)
                 billable_km = max(distance, min_km)
                 calculated_fare = billable_km * per_km_rate
             else:  # round_trip or other
-                per_km_rate = tariff_config.round_trip_per_km or 0
-                min_km = tariff_config.round_trip_min_km or 0
+                per_km_rate = float(tariff_config.round_trip_per_km or 0)
+                min_km = float(tariff_config.round_trip_min_km or 0)
                 billable_km = max(distance, min_km)
                 calculated_fare = billable_km * per_km_rate
             
             # Add driver allowance
-            driver_allowance = tariff_config.driver_allowance or 0
+            driver_allowance = float(tariff_config.driver_allowance or 0)
             calculated_fare += driver_allowance
             
             trip.fare = Decimal(str(calculated_fare))
