@@ -370,6 +370,37 @@ def get_available_drivers_for_trip(trip_id: str = None, db: Session = Depends(ge
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
+@router.patch("/{trip_id}/unassign-driver")
+def unassign_driver_from_trip(trip_id: str, db: Session = Depends(get_db)):
+    """Remove assigned driver from trip"""
+    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    if not trip.assigned_driver_id:
+        raise HTTPException(status_code=400, detail="No driver assigned to this trip")
+    
+    if trip.trip_status in ["STARTED", "COMPLETED", "CANCELLED"]:
+        raise HTTPException(status_code=400, detail=f"Cannot unassign driver from trip with status {trip.trip_status}")
+    
+    # Make driver available again
+    driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+    if driver:
+        driver.is_available = True
+    
+    old_driver_id = trip.assigned_driver_id
+    trip.assigned_driver_id = None
+    trip.trip_status = "OPEN"
+    
+    db.commit()
+    
+    return {
+        "message": "Driver unassigned successfully",
+        "trip_id": trip_id,
+        "unassigned_driver_id": old_driver_id,
+        "new_status": "OPEN"
+    }
+
 @router.patch("/{trip_id}/cancel")
 def cancel_trip(trip_id: str, reason: str = "Cancelled by admin", db: Session = Depends(get_db)):
     """Cancel a trip"""
