@@ -214,7 +214,85 @@ Create a request for a driver to accept a trip.
 }
 ```
 
-### 8. Get Trips by Driver
+### 8. Cancel Trip
+
+**PATCH** `/api/v1/trips/{trip_id}/cancel`
+
+Cancel a trip and update its status to cancelled.
+
+**Path Parameters:**
+- `trip_id` (integer, required): Unique identifier of the trip
+
+**Response (200):**
+```json
+{
+  "message": "Trip cancelled successfully",
+  "trip_id": 2,
+  "old_status": "assigned",
+  "new_status": "cancelled"
+}
+```
+
+### 9. Start Trip
+
+**PATCH** `/api/v1/trips/{trip_id}/start`
+
+Start a trip and update its status to started.
+
+**Path Parameters:**
+- `trip_id` (integer, required): Unique identifier of the trip
+
+**Request Body (Optional):**
+```json
+{
+  "odo_start": 12500,
+  "started_at": "2023-12-01T14:30:00"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Trip started successfully",
+  "trip_id": 2,
+  "old_status": "assigned",
+  "new_status": "started",
+  "started_at": "2023-12-01T14:30:00"
+}
+```
+
+### 10. Complete Trip
+
+**PATCH** `/api/v1/trips/{trip_id}/complete`
+
+Complete a trip and update its status to completed.
+
+**Path Parameters:**
+- `trip_id` (integer, required): Unique identifier of the trip
+
+**Request Body (Optional):**
+```json
+{
+  "odo_end": 12650,
+  "distance_km": 15.5,
+  "final_fare": 750.00,
+  "completed_at": "2023-12-01T16:30:00"
+}
+```
+
+**Response (200):**
+```json
+{
+  "message": "Trip completed successfully",
+  "trip_id": 2,
+  "old_status": "started",
+  "new_status": "completed",
+  "final_fare": 750.00,
+  "completed_at": "2023-12-01T16:30:00"
+}
+```
+
+### 11. Get Trips by Driver
 
 **GET** `/api/v1/trips/driver/{driver_id}`
 
@@ -235,7 +313,7 @@ Retrieve all trips assigned to a specific driver.
 ]
 ```
 
-### 9. Delete Trip
+### 12. Delete Trip
 
 **DELETE** `/api/v1/trips/{trip_id}`
 

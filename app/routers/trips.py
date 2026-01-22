@@ -370,7 +370,7 @@ def get_available_drivers_for_trip(trip_id: str = None, db: Session = Depends(ge
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.post("/{trip_id}/cancel")
+@router.patch("/{trip_id}/cancel")
 def cancel_trip(trip_id: str, reason: str = "Cancelled by admin", db: Session = Depends(get_db)):
     """Cancel a trip"""
     try:
@@ -406,7 +406,7 @@ def cancel_trip(trip_id: str, reason: str = "Cancelled by admin", db: Session = 
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.post("/{trip_id}/start")
+@router.patch("/{trip_id}/start")
 def start_trip(trip_id: str, odo_start: int = None, db: Session = Depends(get_db)):
     """Start a trip"""
     try:
@@ -475,7 +475,7 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
         "distance_km": float(trip.distance_km) if trip.distance_km else None
     }
 
-@router.post("/{trip_id}/complete")
+@router.patch("/{trip_id}/complete")
 def complete_trip(
     trip_id: str, 
     odo_end: int = None, 
