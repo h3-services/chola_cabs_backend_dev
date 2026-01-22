@@ -47,6 +47,7 @@ class DriverUpdate(BaseModel):
     aadhar_number: Optional[str] = None
     licence_expiry: Optional[date] = None
     device_id: Optional[str] = None
+    vehicle_number: Optional[str] = None
 
 class DriverResponse(DriverBase):
     driver_id: str
