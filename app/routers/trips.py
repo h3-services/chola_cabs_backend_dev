@@ -11,6 +11,54 @@ from app.models import Trip, Driver, TripDriverRequest, VehicleTariffConfig
 from app.schemas import TripCreate, TripUpdate, TripResponse, TripDriverRequestCreate, TripDriverRequestUpdate
 from decimal import Decimal
 
+def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, old_status: str, db: Session):
+    """Auto-manage trip status based on odometer readings"""
+    # Auto-start trip when odo_start is set and status is ASSIGNED
+    if trip.odo_start and not old_odo_start and trip.trip_status == "ASSIGNED":
+        trip.trip_status = "STARTED"
+        trip.started_at = datetime.utcnow()
+    
+    # Auto-complete trip when odo_end is set and status is STARTED
+    if trip.odo_start and trip.odo_end and trip.trip_status == "STARTED":
+        # Calculate distance
+        trip.distance_km = Decimal(str(trip.odo_end - trip.odo_start))
+        
+        # Complete trip
+        trip.trip_status = "COMPLETED"
+        trip.ended_at = datetime.utcnow()
+        
+        # Calculate fare
+        tariff_config = db.query(VehicleTariffConfig).filter(
+            VehicleTariffConfig.vehicle_type == trip.vehicle_type,
+            VehicleTariffConfig.is_active == True
+        ).first()
+        
+        if tariff_config:
+            distance = float(trip.distance_km)
+            
+            if trip.trip_type and trip.trip_type.upper() == "ONE_WAY":
+                per_km_rate = tariff_config.one_way_per_km or 0
+                min_km = tariff_config.one_way_min_km or 0
+                billable_km = max(distance, min_km)
+                calculated_fare = billable_km * per_km_rate
+            else:  # round_trip or other
+                per_km_rate = tariff_config.round_trip_per_km or 0
+                min_km = tariff_config.round_trip_min_km or 0
+                billable_km = max(distance, min_km)
+                calculated_fare = billable_km * per_km_rate
+            
+            # Add driver allowance
+            driver_allowance = tariff_config.driver_allowance or 0
+            calculated_fare += driver_allowance
+            
+            trip.fare = Decimal(str(calculated_fare))
+        
+        # Make driver available again
+        if trip.assigned_driver_id:
+            driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+            if driver:
+                driver.is_available = True
+
 router = APIRouter(prefix="/trips", tags=["trips"])
 
 @router.get("/available")
@@ -159,8 +207,17 @@ def update_trip(
         )
     
     update_data = trip_update.dict(exclude_unset=True)
+    
+    # Store old values for comparison
+    old_odo_start = trip.odo_start
+    old_odo_end = trip.odo_end
+    old_status = trip.trip_status
+    
     for field, value in update_data.items():
         setattr(trip, field, value)
+    
+    # Auto-manage trip status based on odometer readings
+    _auto_manage_trip_status(trip, old_odo_start, old_odo_end, old_status, db)
     
     db.commit()
     db.refresh(trip)
@@ -483,12 +540,13 @@ def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(ge
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     
+    old_odo_start = trip.odo_start
+    old_status = trip.trip_status
+    
     trip.odo_start = odo_start
     
-    # Auto-start trip if status is ASSIGNED
-    if trip.trip_status == "ASSIGNED":
-        trip.trip_status = "STARTED"
-        trip.started_at = datetime.utcnow()
+    # Use auto-management function
+    _auto_manage_trip_status(trip, old_odo_start, trip.odo_end, old_status, db)
     
     db.commit()
     db.refresh(trip)
@@ -508,48 +566,13 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     
+    old_odo_end = trip.odo_end
+    old_status = trip.trip_status
+    
     trip.odo_end = odo_end
     
-    # Auto-calculate distance if both readings available
-    if trip.odo_start and trip.odo_end:
-        trip.distance_km = Decimal(str(trip.odo_end - trip.odo_start))
-        
-        # Auto-complete trip and calculate fare
-        if trip.trip_status == "STARTED":
-            trip.trip_status = "COMPLETED"
-            trip.ended_at = datetime.utcnow()
-            
-            # Calculate fare based on distance, trip type and tariff config
-            tariff_config = db.query(VehicleTariffConfig).filter(
-                VehicleTariffConfig.vehicle_type == trip.vehicle_type,
-                VehicleTariffConfig.is_active == True
-            ).first()
-            
-            if tariff_config:
-                distance = float(trip.distance_km)
-                
-                if trip.trip_type == "one_way":
-                    per_km_rate = tariff_config.one_way_per_km or 0
-                    min_km = tariff_config.one_way_min_km or 0
-                    billable_km = max(distance, min_km)
-                    calculated_fare = billable_km * per_km_rate
-                else:  # round_trip
-                    per_km_rate = tariff_config.round_trip_per_km or 0
-                    min_km = tariff_config.round_trip_min_km or 0
-                    billable_km = max(distance, min_km)
-                    calculated_fare = billable_km * per_km_rate
-                
-                # Add driver allowance
-                driver_allowance = tariff_config.driver_allowance or 0
-                calculated_fare += driver_allowance
-                
-                trip.fare = Decimal(str(calculated_fare))
-            
-            # Make driver available again
-            if trip.assigned_driver_id:
-                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-                if driver:
-                    driver.is_available = True
+    # Use auto-management function
+    _auto_manage_trip_status(trip, trip.odo_start, old_odo_end, old_status, db)
     
     db.commit()
     db.refresh(trip)
@@ -602,6 +625,64 @@ def complete_trip(
             "status": "COMPLETED",
             "ended_at": trip.ended_at.isoformat(),
             "distance_km": float(trip.distance_km) if trip.distance_km else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.patch("/fix-incomplete-trips")
+def fix_incomplete_trips(db: Session = Depends(get_db)):
+    """Fix trips that have both odometer readings but are still in STARTED status"""
+    try:
+        # Find trips with both odo readings but still STARTED
+        incomplete_trips = db.query(Trip).filter(
+            Trip.trip_status == "STARTED",
+            Trip.odo_start.isnot(None),
+            Trip.odo_end.isnot(None)
+        ).all()
+        
+        fixed_count = 0
+        for trip in incomplete_trips:
+            old_status = trip.trip_status
+            _auto_manage_trip_status(trip, None, None, old_status, db)
+            fixed_count += 1
+        
+        db.commit()
+        
+        return {
+            "message": f"Fixed {fixed_count} incomplete trips",
+            "fixed_trips": fixed_count
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.patch("/{trip_id}/fix-status")
+def fix_trip_status(trip_id: str, db: Session = Depends(get_db)):
+    """Fix a specific trip's status based on its odometer readings"""
+    try:
+        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found")
+        
+        old_status = trip.trip_status
+        
+        # Apply auto-management logic
+        _auto_manage_trip_status(trip, None, None, old_status, db)
+        
+        db.commit()
+        db.refresh(trip)
+        
+        return {
+            "message": f"Trip status updated from {old_status} to {trip.trip_status}",
+            "trip_id": trip_id,
+            "old_status": old_status,
+            "new_status": trip.trip_status,
+            "distance_km": float(trip.distance_km) if trip.distance_km else None,
+            "fare": float(trip.fare) if trip.fare else None,
+            "ended_at": trip.ended_at.isoformat() if trip.ended_at else None
         }
     except HTTPException:
         raise
