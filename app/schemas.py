@@ -344,8 +344,6 @@ class AdminResponse(BaseModel):
 
 class AdminLoginRequest(BaseModel):
     """Schema for admin login - send OTP"""
-    phone_number: int
-
 class AdminVerifyOTPRequest(BaseModel):
     """Schema for OTP verification"""
     phone_number: int
@@ -394,7 +392,6 @@ class VehicleTypeRevenueResponse(BaseModel):
     """Revenue breakdown by vehicle type"""
     vehicle_revenue: List[VehicleTypeRevenueItem]
     total_revenue: Decimal
-    phone_number: int
 
 class AdminVerifyOTPRequest(BaseModel):
     """Schema for OTP verification"""
