@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from app.database import engine, Base
-from app.routers import drivers, vehicles, trips, payments, wallet_transactions, tariff_config, raw_data, uploads, error_handling, trip_requests, admins
+from app.routers import drivers, vehicles, trips, payments, wallet_transactions, tariff_config, raw_data, uploads, error_handling, trip_requests, admins, analytics
 
 # Load environment variables
 load_dotenv()
@@ -57,6 +57,7 @@ app.include_router(error_handling.router, prefix="/api/v1")
 app.include_router(trip_requests.router, prefix="/api/v1")
 app.include_router(admins.router)
 app.include_router(uploads.router)
+app.include_router(analytics.router)
 
 @app.get("/test-file/{filename}")
 def test_file_exists(filename: str):

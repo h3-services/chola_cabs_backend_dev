@@ -356,3 +356,53 @@ class AdminLoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     admin: AdminResponse
+
+# Analytics Schemas
+class DashboardSummaryResponse(BaseModel):
+    """Dashboard summary statistics"""
+    total_revenue: Decimal
+    today_revenue: Decimal
+    total_trips: int
+    today_trips: int
+    active_drivers: int
+    total_drivers: int
+    completed_trips: int
+    cancelled_trips: int
+
+class MonthlyRevenueItem(BaseModel):
+    """Monthly revenue data"""
+    month: int
+    month_name: str
+    revenue: Decimal
+    trips: int
+
+class MonthlyRevenueResponse(BaseModel):
+    """Yearly monthly revenue breakdown"""
+    year: int
+    monthly_revenue: List[MonthlyRevenueItem]
+    total_year_revenue: Decimal
+    total_year_trips: int
+
+class VehicleTypeRevenueItem(BaseModel):
+    """Revenue by vehicle type"""
+    vehicle_type: str
+    revenue: Decimal
+    trips: int
+    percentage: float
+
+class VehicleTypeRevenueResponse(BaseModel):
+    """Revenue breakdown by vehicle type"""
+    vehicle_revenue: List[VehicleTypeRevenueItem]
+    total_revenue: Decimal
+    phone_number: int
+
+class AdminVerifyOTPRequest(BaseModel):
+    """Schema for OTP verification"""
+    phone_number: int
+    otp: str
+
+class AdminLoginResponse(BaseModel):
+    """Schema for successful login response"""
+    access_token: str
+    token_type: str = "bearer"
+    admin: AdminResponse
