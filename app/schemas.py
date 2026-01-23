@@ -189,21 +189,35 @@ class TripDriverRequestResponse(BaseModel):
         from_attributes = True
 
 # Payment Schemas
+class TransactionType(str, Enum):
+    CASH = "CASH"
+    ONLINE = "ONLINE"
+
+class PaymentStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+
 class PaymentTransactionBase(BaseModel):
     driver_id: str
     amount: Decimal
-    transaction_type: str  # credit, debit
-    status: str = "pending"  # pending, completed, failed
+    transaction_type: TransactionType
+    status: PaymentStatus = PaymentStatus.SUCCESS
     transaction_id: Optional[str] = None
+    razorpay_payment_id: Optional[str] = None
+    razorpay_order_id: Optional[str] = None
+    razorpay_signature: Optional[str] = None
 
 class PaymentTransactionCreate(PaymentTransactionBase):
     pass
 
 class PaymentTransactionUpdate(BaseModel):
     amount: Optional[Decimal] = None
-    transaction_type: Optional[str] = None
-    status: Optional[str] = None
+    transaction_type: Optional[TransactionType] = None
+    status: Optional[PaymentStatus] = None
     transaction_id: Optional[str] = None
+    razorpay_payment_id: Optional[str] = None
+    razorpay_order_id: Optional[str] = None
+    razorpay_signature: Optional[str] = None
 
 class PaymentTransactionResponse(BaseModel):
     payment_id: str
@@ -212,6 +226,10 @@ class PaymentTransactionResponse(BaseModel):
     transaction_type: Optional[str] = None
     status: Optional[str] = None
     transaction_id: Optional[str] = None
+    razorpay_payment_id: Optional[str] = None
+    razorpay_order_id: Optional[str] = None
+    razorpay_signature: Optional[str] = None
+    errors: Optional[dict] = None
     created_at: datetime
 
     class Config:

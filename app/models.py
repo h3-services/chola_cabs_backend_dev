@@ -120,6 +120,9 @@ class PaymentTransaction(Base):
     status = Column(String(50), nullable=True)  # SUCCESS, FAILED
     created_at = Column(DateTime, default=func.now())
     errors = Column(JSON, nullable=True)
+    razorpay_payment_id = Column(String(100), nullable=True)
+    razorpay_order_id = Column(String(100), nullable=True)
+    razorpay_signature = Column(String(255), nullable=True)
     
     # Relationships
     driver = relationship("Driver", back_populates="payment_transactions")
