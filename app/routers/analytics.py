@@ -12,7 +12,8 @@ from app.schemas import (
     VehicleTypeRevenueResponse, VehicleTypeRevenueItem
 )
 from decimal import Decimal
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
@@ -184,6 +185,84 @@ def get_revenue_by_vehicle_type(
             vehicle_revenue=vehicle_revenue,
             total_revenue=total_revenue
         )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
+
+@router.get("/revenue/12-months")
+def get_12_months_revenue(db: Session = Depends(get_db)):
+    """Get revenue for the last 12 months from current date"""
+    try:
+        current_date = date.today()
+        start_date = current_date - relativedelta(months=11)
+        start_date = start_date.replace(day=1)  # Start from first day of month
+        
+        # Query monthly revenue for last 12 months
+        monthly_data = db.query(
+            extract('year', Trip.created_at).label('year'),
+            extract('month', Trip.created_at).label('month'),
+            func.sum(Trip.fare).label('revenue'),
+            func.count(Trip.trip_id).label('trips')
+        ).filter(
+            Trip.trip_status == "COMPLETED",
+            func.date(Trip.created_at) >= start_date
+        ).group_by(
+            extract('year', Trip.created_at),
+            extract('month', Trip.created_at)
+        ).order_by(
+            extract('year', Trip.created_at),
+            extract('month', Trip.created_at)
+        ).all()
+        
+        # Month names mapping
+        month_names = {
+            1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr",
+            5: "May", 6: "Jun", 7: "Jul", 8: "Aug",
+            9: "Sep", 10: "Oct", 11: "Nov", 12: "Dec"
+        }
+        
+        # Create 12-month data structure
+        months_revenue = []
+        total_revenue = Decimal('0')
+        total_trips = 0
+        
+        # Generate all 12 months
+        for i in range(12):
+            month_date = start_date + relativedelta(months=i)
+            months_revenue.append({
+                "year": month_date.year,
+                "month": month_date.month,
+                "month_name": month_names[month_date.month],
+                "month_year": f"{month_names[month_date.month]} {month_date.year}",
+                "revenue": Decimal('0'),
+                "trips": 0
+            })
+        
+        # Fill in actual data
+        for data in monthly_data:
+            year, month = int(data.year), int(data.month)
+            revenue = data.revenue or Decimal('0')
+            trips = data.trips or 0
+            
+            # Find matching month in our structure
+            for month_item in months_revenue:
+                if month_item["year"] == year and month_item["month"] == month:
+                    month_item["revenue"] = revenue
+                    month_item["trips"] = trips
+                    total_revenue += revenue
+                    total_trips += trips
+                    break
+        
+        return {
+            "period": "Last 12 Months",
+            "start_date": start_date,
+            "end_date": current_date,
+            "total_revenue": total_revenue,
+            "total_trips": total_trips,
+            "monthly_data": months_revenue
+        }
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
