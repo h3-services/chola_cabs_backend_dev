@@ -38,13 +38,13 @@ def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, o
             
             if trip.trip_type and trip.trip_type.upper() == "ONE_WAY":
                 per_km_rate = float(tariff_config.one_way_per_km or 0)
-                min_km = float(tariff_config.one_way_min_km or 0)
-                billable_km = max(distance, min_km)
+                min_km = float(tariff_config.one_way_min_km or 130)  # Default 130 km minimum
+                billable_km = max(distance, min_km)  # Enforce minimum km
                 calculated_fare = billable_km * per_km_rate
             else:  # round_trip or other
                 per_km_rate = float(tariff_config.round_trip_per_km or 0)
-                min_km = float(tariff_config.round_trip_min_km or 0)
-                billable_km = max(distance, min_km)
+                min_km = float(tariff_config.round_trip_min_km or 250)  # Default 250 km minimum
+                billable_km = max(distance, min_km)  # Enforce minimum km
                 calculated_fare = billable_km * per_km_rate
             
             # Add driver allowance
@@ -658,6 +658,56 @@ def fix_incomplete_trips(db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+@router.get("/{trip_id}/fare-breakdown")
+def get_fare_breakdown(trip_id: str, db: Session = Depends(get_db)):
+    """Get detailed fare calculation breakdown for a trip"""
+    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    if not trip:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    
+    if not trip.distance_km:
+        raise HTTPException(status_code=400, detail="Trip distance not calculated yet")
+    
+    # Get tariff configuration
+    tariff_config = db.query(VehicleTariffConfig).filter(
+        VehicleTariffConfig.vehicle_type == trip.vehicle_type,
+        VehicleTariffConfig.is_active == True
+    ).first()
+    
+    if not tariff_config:
+        raise HTTPException(status_code=404, detail=f"No active tariff found for {trip.vehicle_type}")
+    
+    distance = float(trip.distance_km)
+    
+    if trip.trip_type and trip.trip_type.upper() == "ONE_WAY":
+        per_km_rate = float(tariff_config.one_way_per_km or 0)
+        min_km = float(tariff_config.one_way_min_km or 130)
+        trip_type_display = "One Way"
+    else:
+        per_km_rate = float(tariff_config.round_trip_per_km or 0)
+        min_km = float(tariff_config.round_trip_min_km or 250)
+        trip_type_display = "Round Trip"
+    
+    billable_km = max(distance, min_km)
+    distance_fare = billable_km * per_km_rate
+    driver_allowance = float(tariff_config.driver_allowance or 0)
+    total_fare = distance_fare + driver_allowance
+    
+    return {
+        "trip_id": trip_id,
+        "vehicle_type": trip.vehicle_type,
+        "trip_type": trip_type_display,
+        "actual_distance_km": distance,
+        "minimum_km_required": min_km,
+        "billable_km": billable_km,
+        "per_km_rate": per_km_rate,
+        "distance_fare": distance_fare,
+        "driver_allowance": driver_allowance,
+        "total_fare": total_fare,
+        "calculation": f"{billable_km} km × ₹{per_km_rate} + ₹{driver_allowance} allowance = ₹{total_fare}",
+        "minimum_applied": distance < min_km
+    }
 
 @router.patch("/{trip_id}/fix-status")
 def fix_trip_status(trip_id: str, db: Session = Depends(get_db)):
