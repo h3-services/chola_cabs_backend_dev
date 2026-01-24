@@ -22,11 +22,13 @@ from urllib.parse import quote_plus
 password = quote_plus(DB_PASSWORD) if DB_PASSWORD else ""
 DATABASE_URL = f"mysql+pymysql://{DB_USER}:{password}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-# Create SQLAlchemy engine
+# Create SQLAlchemy engine with optimized connection pooling
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
-    pool_recycle=300,
+    pool_recycle=3600,     # Recycle connections every hour
+    pool_size=20,          # Number of connections to maintain
+    max_overflow=30,       # Additional connections when needed
     echo=os.getenv("DEBUG", "False").lower() == "true"
 )
 

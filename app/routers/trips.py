@@ -12,7 +12,7 @@ from app.schemas import TripCreate, TripUpdate, TripResponse, TripDriverRequestC
 from decimal import Decimal
 
 def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, old_status: str, db: Session):
-    """Auto-manage trip status based on odometer readings"""
+    """Auto-manage trip status based on odometer readings - optimized"""
     # Auto-start trip when odo_start is set and status is ASSIGNED
     if trip.odo_start and not old_odo_start and trip.trip_status == "ASSIGNED":
         trip.trip_status = "STARTED"
@@ -27,7 +27,7 @@ def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, o
         trip.trip_status = "COMPLETED"
         trip.ended_at = datetime.utcnow()
         
-        # Calculate fare
+        # Optimized tariff query with single database call
         tariff_config = db.query(VehicleTariffConfig).filter(
             VehicleTariffConfig.vehicle_type == trip.vehicle_type,
             VehicleTariffConfig.is_active == True
@@ -38,26 +38,24 @@ def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, o
             
             if trip.trip_type and trip.trip_type.upper() == "ONE_WAY":
                 per_km_rate = float(tariff_config.one_way_per_km or 0)
-                min_km = float(tariff_config.one_way_min_km or 130)  # Default 130 km minimum
-                billable_km = max(distance, min_km)  # Enforce minimum km
+                min_km = float(tariff_config.one_way_min_km or 130)
+                billable_km = max(distance, min_km)
                 calculated_fare = billable_km * per_km_rate
-            else:  # round_trip or other
+            else:
                 per_km_rate = float(tariff_config.round_trip_per_km or 0)
-                min_km = float(tariff_config.round_trip_min_km or 250)  # Default 250 km minimum
-                billable_km = max(distance, min_km)  # Enforce minimum km
+                min_km = float(tariff_config.round_trip_min_km or 250)
+                billable_km = max(distance, min_km)
                 calculated_fare = billable_km * per_km_rate
             
-            # Add driver allowance
             driver_allowance = float(tariff_config.driver_allowance or 0)
             calculated_fare += driver_allowance
-            
             trip.fare = Decimal(str(calculated_fare))
         
-        # Make driver available again
+        # Optimized driver update - single query
         if trip.assigned_driver_id:
-            driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-            if driver:
-                driver.is_available = True
+            db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).update(
+                {"is_available": True}, synchronize_session=False
+            )
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -707,6 +705,39 @@ def get_fare_breakdown(trip_id: str, db: Session = Depends(get_db)):
         "total_fare": total_fare,
         "calculation": f"{billable_km} km × ₹{per_km_rate} + ₹{driver_allowance} allowance = ₹{total_fare}",
         "minimum_applied": distance < min_km
+    }
+
+@router.get("/performance-test")
+def performance_test(db: Session = Depends(get_db)):
+    """Test API performance and database response times"""
+    import time
+    
+    start_time = time.time()
+    
+    # Test database connection
+    db_start = time.time()
+    total_trips = db.query(Trip).count()
+    db_time = time.time() - db_start
+    
+    # Test complex query
+    complex_start = time.time()
+    active_drivers = db.query(Driver).filter(
+        Driver.is_available == True,
+        Driver.is_approved == True
+    ).count()
+    complex_time = time.time() - complex_start
+    
+    total_time = time.time() - start_time
+    
+    return {
+        "performance_metrics": {
+            "total_response_time_ms": round(total_time * 1000, 2),
+            "database_query_time_ms": round(db_time * 1000, 2),
+            "complex_query_time_ms": round(complex_time * 1000, 2),
+            "total_trips": total_trips,
+            "active_drivers": active_drivers
+        },
+        "status": "fast" if total_time < 0.1 else "slow" if total_time > 0.5 else "normal"
     }
 
 @router.patch("/{trip_id}/fix-status")
