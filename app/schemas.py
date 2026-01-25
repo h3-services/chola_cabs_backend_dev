@@ -26,6 +26,15 @@ class TripDriverRequestStatus(str, Enum):
     REJECTED = "REJECTED"
     CANCELLED = "CANCELLED"
 
+# FCM Token Schemas
+class FCMTokenRequest(BaseModel):
+    fcm_token: str
+
+class FCMTokenResponse(BaseModel):
+    message: str
+    driver_id: str
+    tokens_count: int
+
 # Driver Schemas
 class DriverBase(BaseModel):
     name: str
