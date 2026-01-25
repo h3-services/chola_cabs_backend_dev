@@ -53,7 +53,36 @@ def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, o
             trip.fare = Decimal(str(calculated_fare))
             
             # Deduct 2% wallet fee from KM cost only
-            if trip.assigned_driver_id:
+            if trip.assigned_driver_id and km_cost > 0:
+                wallet_fee = km_cost * 0.02
+                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+                if driver:
+                    driver.wallet_balance = (driver.wallet_balance or 0) - Decimal(str(wallet_fee))
+                    
+                    # Create wallet transaction record
+                    wallet_transaction = WalletTransaction(
+                        wallet_id=str(uuid.uuid4()),
+                        driver_id=trip.assigned_driver_id,
+                        trip_id=trip.trip_id,
+                        amount=Decimal(str(wallet_fee)),
+                        transaction_type="DEBIT"
+                    )
+                    db.add(wallet_transaction)
+        else:
+            # Fallback calculation if no tariff config found
+            distance = float(trip.distance_km)
+            # Default rates if no config
+            per_km_rate = 15.0  # Default rate
+            min_km = 130.0 if trip.trip_type and trip.trip_type.upper() == "ONE_WAY" else 250.0
+            driver_allowance = 300.0  # Default allowance
+            
+            billable_km = max(distance, min_km)
+            km_cost = billable_km * per_km_rate
+            calculated_fare = km_cost + driver_allowance
+            trip.fare = Decimal(str(calculated_fare))
+            
+            # Deduct 2% wallet fee from KM cost only
+            if trip.assigned_driver_id and km_cost > 0:
                 wallet_fee = km_cost * 0.02
                 driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
                 if driver:
@@ -725,7 +754,106 @@ def get_fare_breakdown(trip_id: str, db: Session = Depends(get_db)):
         "minimum_applied": distance < min_km
     }
 
-@router.patch("/{trip_id}/fix-status")
+@router.patch("/{trip_id}/recalculate-fare")
+def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
+    """Manually recalculate fare for a completed trip"""
+    try:
+        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found")
+        
+        if not trip.distance_km:
+            raise HTTPException(status_code=400, detail="Trip distance not available")
+        
+        # Get tariff configuration
+        tariff_config = db.query(VehicleTariffConfig).filter(
+            VehicleTariffConfig.vehicle_type == trip.vehicle_type,
+            VehicleTariffConfig.is_active == True
+        ).first()
+        
+        old_fare = float(trip.fare) if trip.fare else 0
+        
+        if tariff_config:
+            distance = float(trip.distance_km)
+            
+            if trip.trip_type and trip.trip_type.upper() == "ONE_WAY":
+                per_km_rate = float(tariff_config.one_way_per_km or 0)
+                min_km = float(tariff_config.one_way_min_km or 130)
+                billable_km = max(distance, min_km)
+                km_cost = billable_km * per_km_rate
+            else:
+                per_km_rate = float(tariff_config.round_trip_per_km or 0)
+                min_km = float(tariff_config.round_trip_min_km or 250)
+                billable_km = max(distance, min_km)
+                km_cost = billable_km * per_km_rate
+            
+            driver_allowance = float(tariff_config.driver_allowance or 0)
+            calculated_fare = km_cost + driver_allowance
+            trip.fare = Decimal(str(calculated_fare))
+            
+            # Deduct 2% wallet fee from KM cost only if trip is completed
+            wallet_fee_deducted = 0
+            if trip.trip_status == "COMPLETED" and trip.assigned_driver_id and km_cost > 0:
+                wallet_fee = km_cost * 0.02
+                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+                if driver:
+                    driver.wallet_balance = (driver.wallet_balance or 0) - Decimal(str(wallet_fee))
+                    wallet_fee_deducted = wallet_fee
+                    
+                    # Create wallet transaction record
+                    wallet_transaction = WalletTransaction(
+                        wallet_id=str(uuid.uuid4()),
+                        driver_id=trip.assigned_driver_id,
+                        trip_id=trip.trip_id,
+                        amount=Decimal(str(wallet_fee)),
+                        transaction_type="DEBIT"
+                    )
+                    db.add(wallet_transaction)
+        else:
+            # Fallback calculation
+            distance = float(trip.distance_km)
+            per_km_rate = 15.0
+            min_km = 130.0 if trip.trip_type and trip.trip_type.upper() == "ONE_WAY" else 250.0
+            driver_allowance = 300.0
+            
+            billable_km = max(distance, min_km)
+            km_cost = billable_km * per_km_rate
+            calculated_fare = km_cost + driver_allowance
+            trip.fare = Decimal(str(calculated_fare))
+            
+            wallet_fee_deducted = 0
+            if trip.trip_status == "COMPLETED" and trip.assigned_driver_id and km_cost > 0:
+                wallet_fee = km_cost * 0.02
+                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+                if driver:
+                    driver.wallet_balance = (driver.wallet_balance or 0) - Decimal(str(wallet_fee))
+                    wallet_fee_deducted = wallet_fee
+                    
+                    wallet_transaction = WalletTransaction(
+                        wallet_id=str(uuid.uuid4()),
+                        driver_id=trip.assigned_driver_id,
+                        trip_id=trip.trip_id,
+                        amount=Decimal(str(wallet_fee)),
+                        transaction_type="DEBIT"
+                    )
+                    db.add(wallet_transaction)
+        
+        db.commit()
+        db.refresh(trip)
+        
+        return {
+            "message": "Fare recalculated successfully",
+            "trip_id": trip_id,
+            "old_fare": old_fare,
+            "new_fare": float(trip.fare),
+            "wallet_fee_deducted": wallet_fee_deducted,
+            "distance_km": float(trip.distance_km)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 def fix_trip_status(trip_id: str, db: Session = Depends(get_db)):
     """Fix a specific trip's status based on its odometer readings"""
     try:
