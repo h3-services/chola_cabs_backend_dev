@@ -547,37 +547,6 @@ def cancel_trip(trip_id: str, reason: str = "Cancelled by admin", db: Session = 
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
-@router.patch("/{trip_id}/start")
-def start_trip(trip_id: str, odo_start: int = None, db: Session = Depends(get_db)):
-    """Start a trip"""
-    try:
-        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-        if not trip:
-            raise HTTPException(status_code=404, detail="Trip not found")
-        
-        if trip.trip_status != "ASSIGNED":
-            raise HTTPException(status_code=400, detail=f"Cannot start trip with status {trip.trip_status}")
-        
-        trip.trip_status = "STARTED"
-        trip.started_at = datetime.utcnow()
-        if odo_start:
-            trip.odo_start = odo_start
-        
-        db.commit()
-        db.refresh(trip)
-        
-        return {
-            "message": "Trip started successfully",
-            "trip_id": trip_id,
-            "status": "STARTED",
-            "started_at": trip.started_at.isoformat()
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
 @router.patch("/{trip_id}/odometer-start")
 def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(get_db)):
     """Update trip starting odometer reading and auto-start trip"""
@@ -631,51 +600,6 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
         "fare": float(trip.fare) if trip.fare else None,
         "ended_at": trip.ended_at.isoformat() if trip.ended_at else None
     }
-
-@router.patch("/{trip_id}/complete")
-def complete_trip(
-    trip_id: str, 
-    odo_end: int = None, 
-    distance_km: float = None,
-    db: Session = Depends(get_db)
-):
-    """Complete a trip"""
-    try:
-        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-        if not trip:
-            raise HTTPException(status_code=404, detail="Trip not found")
-        
-        if trip.trip_status != "STARTED":
-            raise HTTPException(status_code=400, detail=f"Cannot complete trip with status {trip.trip_status}")
-        
-        trip.trip_status = "COMPLETED"
-        trip.ended_at = datetime.utcnow()
-        if odo_end:
-            trip.odo_end = odo_end
-        if distance_km:
-            trip.distance_km = Decimal(str(distance_km))
-        
-        # Make driver available again
-        if trip.assigned_driver_id:
-            driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-            if driver:
-                driver.is_available = True
-        
-        db.commit()
-        db.refresh(trip)
-        
-        return {
-            "message": "Trip completed successfully",
-            "trip_id": trip_id,
-            "status": "COMPLETED",
-            "ended_at": trip.ended_at.isoformat(),
-            "distance_km": float(trip.distance_km) if trip.distance_km else None
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.patch("/fix-incomplete-trips")
 def fix_incomplete_trips(db: Session = Depends(get_db)):
@@ -854,6 +778,7 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+@router.patch("/{trip_id}/fix-status")
 def fix_trip_status(trip_id: str, db: Session = Depends(get_db)):
     """Fix a specific trip's status based on its odometer readings"""
     try:
