@@ -62,6 +62,16 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
             Trip.trip_status.in_(["ASSIGNED", "STARTED"])
         ).scalar() or 0
         
+        # Pending trips (OPEN status)
+        pending_trips = db.query(func.count(Trip.trip_id)).filter(
+            Trip.trip_status == "OPEN"
+        ).scalar() or 0
+        
+        # In progress trips (STARTED status)
+        in_progress_trips = db.query(func.count(Trip.trip_id)).filter(
+            Trip.trip_status == "STARTED"
+        ).scalar() or 0
+        
         return DashboardSummaryResponse(
             total_revenue=total_revenue,
             today_revenue=today_revenue,
@@ -71,7 +81,9 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
             total_drivers=total_drivers,
             completed_trips=completed_trips,
             cancelled_trips=cancelled_trips,
-            assigned_trips=assigned_trips
+            assigned_trips=assigned_trips,
+            pending_trips=pending_trips,
+            in_progress_trips=in_progress_trips
         )
     except Exception as e:
         raise HTTPException(

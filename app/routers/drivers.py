@@ -40,6 +40,7 @@ def get_all_drivers(
             "licence_expiry": driver.licence_expiry.isoformat() if driver.licence_expiry else None,
             "wallet_balance": float(driver.wallet_balance) if driver.wallet_balance else 0.0,
             "device_id": driver.device_id,
+            "fcm_tokens": driver.fcm_tokens,
             "is_available": driver.is_available,
             "is_approved": driver.is_approved,
             "errors": driver.errors,
@@ -72,6 +73,7 @@ def get_driver_by_id(driver_id: str, db: Session = Depends(get_db)):
         "licence_expiry": driver.licence_expiry.isoformat() if driver.licence_expiry else None,
         "wallet_balance": float(driver.wallet_balance) if driver.wallet_balance else 0.0,
         "device_id": driver.device_id,
+        "fcm_tokens": driver.fcm_tokens,
         "is_available": driver.is_available,
         "is_approved": driver.is_approved,
         "errors": driver.errors,
@@ -269,6 +271,66 @@ def delete_driver(driver_id: str, db: Session = Depends(get_db)):
         "message": "Driver deleted successfully",
         "driver_id": driver_id
     }
+
+@router.post("/{driver_id}/fcm-token", response_model=FCMTokenResponse)
+def update_fcm_token(
+    driver_id: str,
+    fcm_request: FCMTokenRequest,
+    db: Session = Depends(get_db)
+):
+    """Update driver's FCM token for push notifications"""
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Driver not found"
+        )
+    
+    # Initialize fcm_tokens as empty list if None
+    if driver.fcm_tokens is None:
+        driver.fcm_tokens = []
+    
+    # Add new token if not already present
+    if fcm_request.fcm_token not in driver.fcm_tokens:
+        driver.fcm_tokens.append(fcm_request.fcm_token)
+    
+    db.commit()
+    db.refresh(driver)
+    
+    return FCMTokenResponse(
+        message="FCM token updated successfully",
+        driver_id=driver_id,
+        fcm_tokens=driver.fcm_tokens
+    )
+
+@router.delete("/{driver_id}/fcm-token")
+def remove_fcm_token(
+    driver_id: str,
+    fcm_token: str = Query(..., description="FCM token to remove"),
+    db: Session = Depends(get_db)
+):
+    """Remove specific FCM token from driver"""
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Driver not found"
+        )
+    
+    if driver.fcm_tokens and fcm_token in driver.fcm_tokens:
+        driver.fcm_tokens.remove(fcm_token)
+        db.commit()
+        db.refresh(driver)
+        return {
+            "message": "FCM token removed successfully",
+            "driver_id": driver_id,
+            "fcm_tokens": driver.fcm_tokens
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="FCM token not found for this driver"
+        )
 
 # FCM Token Management
 @router.post("/{driver_id}/fcm-token", response_model=FCMTokenResponse)

@@ -33,7 +33,7 @@ class FCMTokenRequest(BaseModel):
 class FCMTokenResponse(BaseModel):
     message: str
     driver_id: str
-    tokens_count: int
+    fcm_tokens: List[str]
 
 # Driver Schemas
 class DriverBase(BaseModel):
@@ -65,6 +65,7 @@ class DriverResponse(DriverBase):
     licence_url: Optional[str] = None
     wallet_balance: Decimal
     device_id: Optional[str] = None
+    fcm_tokens: Optional[List[str]] = None
     is_available: bool
     is_approved: bool
     errors: Optional[str] = None
@@ -376,6 +377,8 @@ class DashboardSummaryResponse(BaseModel):
     completed_trips: int
     cancelled_trips: int
     assigned_trips: int
+    pending_trips: int
+    in_progress_trips: int
 
 class MonthlyRevenueItem(BaseModel):
     """Monthly revenue data"""
