@@ -7,9 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from app.database import get_db
-from app.models import Trip, Driver, TripDriverRequest, VehicleTariffConfig
+from app.models import Trip, Driver, TripDriverRequest, VehicleTariffConfig, WalletTransaction
 from app.schemas import TripCreate, TripUpdate, TripResponse, TripDriverRequestCreate, TripDriverRequestUpdate
 from decimal import Decimal
+import uuid
 
 def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, old_status: str, db: Session):
     """Auto-manage trip status based on odometer readings - optimized"""
@@ -40,22 +41,39 @@ def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, o
                 per_km_rate = float(tariff_config.one_way_per_km or 0)
                 min_km = float(tariff_config.one_way_min_km or 130)
                 billable_km = max(distance, min_km)
-                calculated_fare = billable_km * per_km_rate
+                km_cost = billable_km * per_km_rate
             else:
                 per_km_rate = float(tariff_config.round_trip_per_km or 0)
                 min_km = float(tariff_config.round_trip_min_km or 250)
                 billable_km = max(distance, min_km)
-                calculated_fare = billable_km * per_km_rate
+                km_cost = billable_km * per_km_rate
             
             driver_allowance = float(tariff_config.driver_allowance or 0)
-            calculated_fare += driver_allowance
+            calculated_fare = km_cost + driver_allowance
             trip.fare = Decimal(str(calculated_fare))
+            
+            # Deduct 2% wallet fee from KM cost only
+            if trip.assigned_driver_id:
+                wallet_fee = km_cost * 0.02
+                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+                if driver:
+                    driver.wallet_balance = (driver.wallet_balance or 0) - Decimal(str(wallet_fee))
+                    
+                    # Create wallet transaction record
+                    wallet_transaction = WalletTransaction(
+                        wallet_id=str(uuid.uuid4()),
+                        driver_id=trip.assigned_driver_id,
+                        trip_id=trip.trip_id,
+                        amount=Decimal(str(wallet_fee)),
+                        transaction_type="DEBIT"
+                    )
+                    db.add(wallet_transaction)
         
-        # Optimized driver update - single query
+        # Make driver available again
         if trip.assigned_driver_id:
-            db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).update(
-                {"is_available": True}, synchronize_session=False
-            )
+            driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+            if driver:
+                driver.is_available = True
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
