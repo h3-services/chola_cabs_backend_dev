@@ -368,9 +368,6 @@ def clear_all_fcm_tokens(driver_id: str, db: Session = Depends(get_db)):
         "driver_id": driver_id,
         "tokens_count": 0
     }
-        "message": "Driver deleted successfully",
-        "driver_id": driver_id
-    }
 
 @router.patch("/{driver_id}/clear-errors")
 def clear_driver_errors(driver_id: str, db: Session = Depends(get_db)):
