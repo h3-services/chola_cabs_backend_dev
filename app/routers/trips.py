@@ -707,39 +707,6 @@ def get_fare_breakdown(trip_id: str, db: Session = Depends(get_db)):
         "minimum_applied": distance < min_km
     }
 
-@router.get("/performance-test")
-def performance_test(db: Session = Depends(get_db)):
-    """Test API performance and database response times"""
-    import time
-    
-    start_time = time.time()
-    
-    # Test database connection
-    db_start = time.time()
-    total_trips = db.query(Trip).count()
-    db_time = time.time() - db_start
-    
-    # Test complex query
-    complex_start = time.time()
-    active_drivers = db.query(Driver).filter(
-        Driver.is_available == True,
-        Driver.is_approved == True
-    ).count()
-    complex_time = time.time() - complex_start
-    
-    total_time = time.time() - start_time
-    
-    return {
-        "performance_metrics": {
-            "total_response_time_ms": round(total_time * 1000, 2),
-            "database_query_time_ms": round(db_time * 1000, 2),
-            "complex_query_time_ms": round(complex_time * 1000, 2),
-            "total_trips": total_trips,
-            "active_drivers": active_drivers
-        },
-        "status": "fast" if total_time < 0.1 else "slow" if total_time > 0.5 else "normal"
-    }
-
 @router.patch("/{trip_id}/fix-status")
 def fix_trip_status(trip_id: str, db: Session = Depends(get_db)):
     """Fix a specific trip's status based on its odometer readings"""

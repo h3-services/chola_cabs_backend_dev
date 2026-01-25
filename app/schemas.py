@@ -366,6 +366,7 @@ class DashboardSummaryResponse(BaseModel):
     total_drivers: int
     completed_trips: int
     cancelled_trips: int
+    assigned_trips: int
 
 class MonthlyRevenueItem(BaseModel):
     """Monthly revenue data"""
