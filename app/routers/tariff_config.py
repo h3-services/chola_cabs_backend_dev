@@ -67,6 +67,21 @@ def update_tariff_config(
     db.refresh(config)
     return config
 
+@router.patch("/{config_id}/toggle-active", response_model=VehicleTariffConfigResponse)
+def toggle_tariff_config_active(config_id: str, db: Session = Depends(get_db)):
+    """Toggle is_active status for a tariff configuration"""
+    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
+    if not config:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Tariff configuration not found"
+        )
+    
+    config.is_active = not config.is_active
+    db.commit()
+    db.refresh(config)
+    return config
+
 @router.delete("/{config_id}")
 def delete_tariff_config(config_id: str, db: Session = Depends(get_db)):
     """Delete a tariff configuration"""
