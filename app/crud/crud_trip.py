@@ -253,34 +253,33 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                 # ✅ Calculate commission and update wallet if fare exists
                 if trip.fare and trip.assigned_driver_id:
                     commission_amount = Decimal(trip.fare) * Decimal(DEFAULT_DRIVER_COMMISSION_PERCENT / 100)
-                    driver_earnings = Decimal(trip.fare) - commission_amount
                     
                     # Get driver
                     driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
                     
                     if driver:
-                        # Create CREDIT transaction for driver earnings
-                        wallet_credit = WalletTransaction(
+                        # 1. CREDIT full fare
+                        wallet_fare = WalletTransaction(
                             wallet_id=str(uuid.uuid4()),
                             driver_id=trip.assigned_driver_id,
                             trip_id=trip.trip_id,
-                            amount=driver_earnings,
-                            transaction_type=WalletTransactionType.CREDIT.value
+                            amount=trip.fare,
+                            transaction_type="CREDIT"
                         )
-                        db.add(wallet_credit)
+                        db.add(wallet_fare)
                         
-                        # Create COMMISSION transaction for record keeping
+                        # 2. DEBIT commission (minus from balance)
                         wallet_commission = WalletTransaction(
                             wallet_id=str(uuid.uuid4()),
                             driver_id=trip.assigned_driver_id,
                             trip_id=trip.trip_id,
                             amount=commission_amount,
-                            transaction_type=WalletTransactionType.COMMISSION.value
+                            transaction_type="DEBIT"
                         )
                         db.add(wallet_commission)
                         
                         # Update driver wallet balance
-                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + driver_earnings
+                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + trip.fare - commission_amount
             
             db.commit()
             db.refresh(trip)

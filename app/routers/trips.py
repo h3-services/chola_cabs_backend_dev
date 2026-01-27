@@ -442,9 +442,8 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
                 # ✅ Calculate 10% commission safely
                 comm_pct = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")
                 commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                driver_earnings = trip.fare - commission_amount
                 
-                logger.info(f"Trip {trip_id}: Fare=₹{trip.fare}, Commission=₹{commission_amount}, Driver Earnings=₹{driver_earnings}")
+                logger.info(f"Trip {trip_id}: Fare=₹{trip.fare}, Commission=₹{commission_amount}")
                 
                 # ✅ Create wallet transactions and update driver balance
                 if trip.assigned_driver_id:
@@ -452,30 +451,30 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
                     driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
                     
                     if driver:
-                        # Create CREDIT transaction for driver earnings (NET amount after commission)
-                        wallet_credit = WalletTransaction(
+                        # 1. CREDIT full fare to wallet
+                        wallet_fare = WalletTransaction(
                             wallet_id=str(uuid.uuid4()),
                             driver_id=trip.assigned_driver_id,
                             trip_id=trip.trip_id,
-                            amount=driver_earnings,
-                            transaction_type=WalletTransactionType.CREDIT.value
+                            amount=trip.fare,
+                            transaction_type="CREDIT"
                         )
-                        db.add(wallet_credit)
+                        db.add(wallet_fare)
                         
-                        # Create COMMISSION transaction for record keeping
+                        # 2. DEBIT commission from wallet (minus from balance)
                         wallet_commission = WalletTransaction(
                             wallet_id=str(uuid.uuid4()),
                             driver_id=trip.assigned_driver_id,
                             trip_id=trip.trip_id,
                             amount=commission_amount,
-                            transaction_type=WalletTransactionType.COMMISSION.value
+                            transaction_type="DEBIT"
                         )
                         db.add(wallet_commission)
                         
-                        # Update driver wallet balance (add NET earnings only)
-                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + driver_earnings
+                        # Update driver wallet balance (Fare - Commission)
+                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + trip.fare - commission_amount
                         
-                        logger.info(f"Driver {trip.assigned_driver_id} wallet updated: +₹{driver_earnings}")
+                        logger.info(f"Driver {trip.assigned_driver_id} wallet updated: +₹{trip.fare} (Fare), -₹{commission_amount} (Commission)")
                     else:
                         logger.warning(f"Driver {trip.assigned_driver_id} not found for wallet update")
         
@@ -567,14 +566,14 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
             driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
             if driver:
                 # Create adjustment transaction
-                adj_type = WalletTransactionType.CREDIT if net_difference > 0 else WalletTransactionType.DEBIT
+                adj_type = "CREDIT" if net_difference > 0 else "DEBIT"
                 
                 adjustment = WalletTransaction(
                     wallet_id=str(uuid.uuid4()),
                     driver_id=trip.assigned_driver_id,
                     trip_id=trip.trip_id,
                     amount=abs(net_difference),
-                    transaction_type=adj_type.value
+                    transaction_type=adj_type
                 )
                 db.add(adjustment)
                 
