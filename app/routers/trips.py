@@ -396,12 +396,13 @@ def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(ge
 def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db)):
     """Update trip ending odometer reading and auto-complete trip with commission calculation"""
     try:
-        # Import required models and constants
+        # Import required models and constants locally for safety
         from app.models import Driver, WalletTransaction
         from app.core.constants import DEFAULT_DRIVER_COMMISSION_PERCENT, WalletTransactionType
-        from decimal import Decimal
+        from decimal import Decimal, ROUND_HALF_UP
+        import uuid
         
-        # ✅ OPTIMIZED: Get trip using CRUD
+        # ✅ Get trip using CRUD
         trip = crud_trip.get(db, id=trip_id)
         if not trip:
             raise HTTPException(
@@ -422,7 +423,7 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
             )
         
         trip.odo_end = odo_end
-        trip.distance_km = odo_end - trip.odo_start
+        trip.distance_km = Decimal(odo_end - trip.odo_start)
         
         # Variables to track commission and earnings
         commission_amount = None
@@ -436,13 +437,14 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
             # ✅ Calculate fare using CRUD (distance × per_km_rate only)
             fare = crud_trip.calculate_fare(db, trip)
             if fare:
-                trip.fare = fare
+                trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 
-                # ✅ Calculate 10% commission
-                commission_amount = Decimal(fare) * Decimal(DEFAULT_DRIVER_COMMISSION_PERCENT / 100)
-                driver_earnings = Decimal(fare) - commission_amount
+                # ✅ Calculate 10% commission safely
+                comm_pct = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")
+                commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                driver_earnings = trip.fare - commission_amount
                 
-                logger.info(f"Trip {trip_id}: Fare=₹{fare}, Commission=₹{commission_amount}, Driver Earnings=₹{driver_earnings}")
+                logger.info(f"Trip {trip_id}: Fare=₹{trip.fare}, Commission=₹{commission_amount}, Driver Earnings=₹{driver_earnings}")
                 
                 # ✅ Create wallet transactions and update driver balance
                 if trip.assigned_driver_id:
@@ -473,7 +475,7 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
                         # Update driver wallet balance (add NET earnings only)
                         driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + driver_earnings
                         
-                        logger.info(f"Driver {trip.assigned_driver_id} wallet updated: +₹{driver_earnings} (after ₹{commission_amount} commission)")
+                        logger.info(f"Driver {trip.assigned_driver_id} wallet updated: +₹{driver_earnings}")
                     else:
                         logger.warning(f"Driver {trip.assigned_driver_id} not found for wallet update")
         
@@ -572,8 +574,7 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
                     driver_id=trip.assigned_driver_id,
                     trip_id=trip.trip_id,
                     amount=abs(net_difference),
-                    transaction_type=adj_type,
-                    description=f"Fare Recalculation Adjustment ({DEFAULT_DRIVER_COMMISSION_PERCENT}% commission)"
+                    transaction_type=adj_type
                 )
                 db.add(adjustment)
                 
