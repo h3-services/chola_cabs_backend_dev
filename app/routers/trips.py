@@ -451,17 +451,7 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
                     driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
                     
                     if driver:
-                        # 1. CREDIT full fare to wallet
-                        wallet_fare = WalletTransaction(
-                            wallet_id=str(uuid.uuid4()),
-                            driver_id=trip.assigned_driver_id,
-                            trip_id=trip.trip_id,
-                            amount=trip.fare,
-                            transaction_type="CREDIT"
-                        )
-                        db.add(wallet_fare)
-                        
-                        # 2. DEBIT commission from wallet (minus from balance)
+                        # Create DEBIT transaction for commission (minus from balance)
                         wallet_commission = WalletTransaction(
                             wallet_id=str(uuid.uuid4()),
                             driver_id=trip.assigned_driver_id,
@@ -471,10 +461,10 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
                         )
                         db.add(wallet_commission)
                         
-                        # Update driver wallet balance (Fare - Commission)
-                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + trip.fare - commission_amount
+                        # Update driver wallet balance (Minus commission only)
+                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) - commission_amount
                         
-                        logger.info(f"Driver {trip.assigned_driver_id} wallet updated: +₹{trip.fare} (Fare), -₹{commission_amount} (Commission)")
+                        logger.info(f"Driver {trip.assigned_driver_id} wallet updated: -₹{commission_amount} (Commission deducted)")
                     else:
                         logger.warning(f"Driver {trip.assigned_driver_id} not found for wallet update")
         
@@ -494,10 +484,10 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
         }
         
         # Add commission details if calculated
-        if commission_amount is not None and driver_earnings is not None:
-            response["commission"] = float(commission_amount)
+        if commission_amount is not None:
+            response["commission_deducted"] = float(commission_amount)
             response["commission_percentage"] = DEFAULT_DRIVER_COMMISSION_PERCENT
-            response["driver_earnings"] = float(driver_earnings)
+            response["driver_collects_from_customer"] = float(trip.fare) if trip.fare else 0.0
             response["wallet_updated"] = True
         
         return response
@@ -549,14 +539,11 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
                 "fare": float(new_fare)
             }
 
-        # Calculate difference to update wallet
-        old_commission = old_fare * Decimal(DEFAULT_DRIVER_COMMISSION_PERCENT / 100)
-        old_net = old_fare - old_commission
+        # Calculate difference in COMMISSION to update wallet
+        old_commission = (old_fare * Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")).quantize(Decimal("0.01"))
+        new_commission = (new_fare * Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")).quantize(Decimal("0.01"))
         
-        new_commission = new_fare * Decimal(DEFAULT_DRIVER_COMMISSION_PERCENT / 100)
-        new_net = new_fare - new_commission
-        
-        net_difference = new_net - old_net
+        commission_difference = new_commission - old_commission
         
         # Update trip fare
         trip.fare = new_fare
@@ -565,22 +552,23 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
         if trip.assigned_driver_id:
             driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
             if driver:
-                # Create adjustment transaction
-                adj_type = "CREDIT" if net_difference > 0 else "DEBIT"
+                # If commission increased, we need to DEBIT more from wallet
+                # If commission decreased, we need to CREDIT some back
+                adj_type = "DEBIT" if commission_difference > 0 else "CREDIT"
                 
                 adjustment = WalletTransaction(
                     wallet_id=str(uuid.uuid4()),
                     driver_id=trip.assigned_driver_id,
                     trip_id=trip.trip_id,
-                    amount=abs(net_difference),
+                    amount=abs(commission_difference),
                     transaction_type=adj_type
                 )
                 db.add(adjustment)
                 
-                # Update balance
-                driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + net_difference
+                # Update balance (Subtract the difference in commission)
+                driver.wallet_balance = (driver.wallet_balance or Decimal(0)) - commission_difference
                 
-                logger.info(f"Trip {trip_id} recalculated. Wallet adjusted by ₹{net_difference}")
+                logger.info(f"Trip {trip_id} recalculated. Commission adjusted by ₹{commission_difference}")
 
         db.commit()
         db.refresh(trip)

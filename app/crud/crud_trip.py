@@ -173,22 +173,16 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         trip: Trip
     ) -> Optional[Decimal]:
         """
-        Calculate fare for a trip based on tariff configuration
+        Calculate fare for a trip with minimum KM rules
         
-        IMPORTANT: 
-        - Fare is calculated ONLY based on odometer distance difference
-        - driver_allowance is stored in tariff config but NOT added to fare
-        - Commission is calculated based on distance only
-        
-        Args:
-            db: Database session
-            trip: Trip instance
-        
-        Returns:
-            Calculated fare (distance × per_km_rate) or None
+        Rules:
+        - One Way: Min 130 KM
+        - Round Trip: Min 250 KM
         """
         if not trip.odo_start or not trip.odo_end:
             return None
+        
+        from app.models import VehicleTariffConfig
         
         # Get tariff config
         tariff = db.query(VehicleTariffConfig).filter(
@@ -199,21 +193,22 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         if not tariff:
             return None
         
-        # Calculate distance from odometer readings
-        distance_km = trip.odo_end - trip.odo_start
+        # Calculate actual distance
+        actual_distance = Decimal(trip.odo_end - trip.odo_start)
         
-        # Calculate fare based ONLY on distance × per_km_rate
-        # NOTE: driver_allowance is NOT included in fare calculation
-        # It is stored in tariff config for reference only
+        # Apply Minimum KM Rules
         if trip.trip_type == "One Way":
-            fare = Decimal(distance_km) * tariff.one_way_per_km
+            billable_distance = max(actual_distance, Decimal("130"))
+            fare = billable_distance * tariff.one_way_per_km
         elif trip.trip_type == "Round Trip":
-            fare = Decimal(distance_km) * tariff.round_trip_per_km
+            billable_distance = max(actual_distance, Decimal("250"))
+            fare = billable_distance * tariff.round_trip_per_km
         else:
-            fare = Decimal(distance_km) * tariff.one_way_per_km
-        
+            billable_distance = max(actual_distance, Decimal("130"))
+            fare = billable_distance * tariff.one_way_per_km
+            
         return fare
-    
+
     def update_status(
         self,
         db: Session,
@@ -221,19 +216,11 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         new_status: str
     ) -> Optional[Trip]:
         """
-        Update trip status with automatic commission handling
-        
-        Args:
-            db: Database session
-            trip_id: Trip ID
-            new_status: New trip status
-        
-        Returns:
-            Updated trip or None
+        Update trip status with commission-only wallet deduction
         """
         from app.models import Driver, WalletTransaction
-        from app.core.constants import DEFAULT_DRIVER_COMMISSION_PERCENT, WalletTransactionType
-        from decimal import Decimal
+        from app.core.constants import DEFAULT_DRIVER_COMMISSION_PERCENT
+        from decimal import Decimal, ROUND_HALF_UP
         import uuid
         
         trip = self.get(db, id=trip_id)
@@ -250,25 +237,16 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                 if not trip.fare:
                     trip.fare = self.calculate_fare(db, trip)
                 
-                # ✅ Calculate commission and update wallet if fare exists
+                # ✅ ONLY DEBIT commission from wallet (Customer pays driver directly)
                 if trip.fare and trip.assigned_driver_id:
-                    commission_amount = Decimal(trip.fare) * Decimal(DEFAULT_DRIVER_COMMISSION_PERCENT / 100)
+                    comm_pct = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")
+                    commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                     
                     # Get driver
                     driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
                     
                     if driver:
-                        # 1. CREDIT full fare
-                        wallet_fare = WalletTransaction(
-                            wallet_id=str(uuid.uuid4()),
-                            driver_id=trip.assigned_driver_id,
-                            trip_id=trip.trip_id,
-                            amount=trip.fare,
-                            transaction_type="CREDIT"
-                        )
-                        db.add(wallet_fare)
-                        
-                        # 2. DEBIT commission (minus from balance)
+                        # Create DEBIT transaction for commission
                         wallet_commission = WalletTransaction(
                             wallet_id=str(uuid.uuid4()),
                             driver_id=trip.assigned_driver_id,
@@ -278,8 +256,8 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                         )
                         db.add(wallet_commission)
                         
-                        # Update driver wallet balance
-                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + trip.fare - commission_amount
+                        # Update driver wallet balance (Minus commission only)
+                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) - commission_amount
             
             db.commit()
             db.refresh(trip)
