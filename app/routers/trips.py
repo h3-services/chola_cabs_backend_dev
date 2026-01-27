@@ -458,7 +458,7 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
                             driver_id=trip.assigned_driver_id,
                             trip_id=trip.trip_id,
                             amount=driver_earnings,
-                            transaction_type=WalletTransactionType.CREDIT
+                            transaction_type=WalletTransactionType.CREDIT.value
                         )
                         db.add(wallet_credit)
                         
@@ -468,7 +468,7 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
                             driver_id=trip.assigned_driver_id,
                             trip_id=trip.trip_id,
                             amount=commission_amount,
-                            transaction_type=WalletTransactionType.COMMISSION
+                            transaction_type=WalletTransactionType.COMMISSION.value
                         )
                         db.add(wallet_commission)
                         
@@ -574,7 +574,7 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
                     driver_id=trip.assigned_driver_id,
                     trip_id=trip.trip_id,
                     amount=abs(net_difference),
-                    transaction_type=adj_type
+                    transaction_type=adj_type.value
                 )
                 db.add(adjustment)
                 

@@ -265,7 +265,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                             driver_id=trip.assigned_driver_id,
                             trip_id=trip.trip_id,
                             amount=driver_earnings,
-                            transaction_type=WalletTransactionType.CREDIT
+                            transaction_type=WalletTransactionType.CREDIT.value
                         )
                         db.add(wallet_credit)
                         
@@ -275,7 +275,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                             driver_id=trip.assigned_driver_id,
                             trip_id=trip.trip_id,
                             amount=commission_amount,
-                            transaction_type=WalletTransactionType.COMMISSION
+                            transaction_type=WalletTransactionType.COMMISSION.value
                         )
                         db.add(wallet_commission)
                         
