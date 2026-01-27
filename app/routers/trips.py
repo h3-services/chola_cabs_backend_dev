@@ -1,134 +1,38 @@
 """
-Trip API endpoints
+Trip API endpoints - OPTIMIZED
+Uses CRUD layer for production-ready performance
 """
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
-from app.database import get_db
-from app.models import Trip, Driver, TripDriverRequest, VehicleTariffConfig, WalletTransaction
-from app.schemas import TripCreate, TripUpdate, TripResponse, TripDriverRequestCreate, TripDriverRequestUpdate
-from decimal import Decimal
+
+from app.api.deps import get_db
+from app.crud import crud_trip, crud_driver
+from app.schemas import TripCreate, TripUpdate, TripResponse
+from app.core.logging import get_logger
+from app.core.constants import TripStatus, ErrorCode
 import uuid
 
-def _auto_manage_trip_status(trip: Trip, old_odo_start: int, old_odo_end: int, old_status: str, db: Session):
-    """Auto-manage trip status based on odometer readings - optimized"""
-    # Auto-start trip when odo_start is set and status is ASSIGNED
-    if trip.odo_start and not old_odo_start and trip.trip_status == "ASSIGNED":
-        trip.trip_status = "STARTED"
-        trip.started_at = datetime.utcnow()
-    
-    # Auto-complete trip when odo_end is set and status is STARTED
-    if trip.odo_start and trip.odo_end and trip.trip_status == "STARTED":
-        # Calculate distance
-        trip.distance_km = Decimal(str(trip.odo_end - trip.odo_start))
-        
-        # Complete trip
-        trip.trip_status = "COMPLETED"
-        trip.ended_at = datetime.utcnow()
-        
-        # Optimized tariff query with single database call
-        tariff_config = db.query(VehicleTariffConfig).filter(
-            VehicleTariffConfig.vehicle_type == trip.vehicle_type,
-            VehicleTariffConfig.is_active == True
-        ).first()
-        
-        if tariff_config:
-            distance = float(trip.distance_km)
-            
-            if trip.trip_type and trip.trip_type.upper() == "ONE_WAY":
-                per_km_rate = float(tariff_config.one_way_per_km or 0)
-                min_km = float(tariff_config.one_way_min_km or 130)
-                billable_km = max(distance, min_km)
-                km_cost = billable_km * per_km_rate
-            else:
-                per_km_rate = float(tariff_config.round_trip_per_km or 0)
-                min_km = float(tariff_config.round_trip_min_km or 250)
-                billable_km = max(distance, min_km)
-                km_cost = billable_km * per_km_rate
-            
-            driver_allowance = float(tariff_config.driver_allowance or 0)
-            calculated_fare = km_cost + driver_allowance
-            trip.fare = Decimal(str(calculated_fare))
-            
-            # Deduct 2% wallet fee from KM cost only
-            if trip.assigned_driver_id and km_cost > 0:
-                wallet_fee = km_cost * 0.02
-                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-                if driver:
-                    driver.wallet_balance = (driver.wallet_balance or 0) - Decimal(str(wallet_fee))
-                    
-                    # Create wallet transaction record
-                    wallet_transaction = WalletTransaction(
-                        wallet_id=str(uuid.uuid4()),
-                        driver_id=trip.assigned_driver_id,
-                        trip_id=trip.trip_id,
-                        amount=Decimal(str(wallet_fee)),
-                        transaction_type="DEBIT"
-                    )
-                    db.add(wallet_transaction)
-        else:
-            # Fallback calculation if no tariff config found
-            distance = float(trip.distance_km)
-            # Default rates if no config
-            per_km_rate = 15.0  # Default rate
-            min_km = 130.0 if trip.trip_type and trip.trip_type.upper() == "ONE_WAY" else 250.0
-            driver_allowance = 300.0  # Default allowance
-            
-            billable_km = max(distance, min_km)
-            km_cost = billable_km * per_km_rate
-            calculated_fare = km_cost + driver_allowance
-            trip.fare = Decimal(str(calculated_fare))
-            
-            # Deduct 2% wallet fee from KM cost only
-            if trip.assigned_driver_id and km_cost > 0:
-                wallet_fee = km_cost * 0.02
-                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-                if driver:
-                    driver.wallet_balance = (driver.wallet_balance or 0) - Decimal(str(wallet_fee))
-                    
-                    # Create wallet transaction record
-                    wallet_transaction = WalletTransaction(
-                        wallet_id=str(uuid.uuid4()),
-                        driver_id=trip.assigned_driver_id,
-                        trip_id=trip.trip_id,
-                        amount=Decimal(str(wallet_fee)),
-                        transaction_type="DEBIT"
-                    )
-                    db.add(wallet_transaction)
-        
-        # Make driver available again
-        if trip.assigned_driver_id:
-            driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-            if driver:
-                driver.is_available = True
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
-@router.get("/available")
+
+@router.get("/available", response_model=List[TripResponse])
 def get_available_trips(db: Session = Depends(get_db)):
-    """Get all available trips (OPEN status, no driver assigned)"""
-    trips = db.query(Trip).filter(
-        Trip.trip_status == "OPEN",
-        Trip.assigned_driver_id == None
-    ).all()
-    
-    result = []
-    for trip in trips:
-        result.append({
-            "trip_id": trip.trip_id,
-            "customer_name": trip.customer_name,
-            "pickup_address": trip.pickup_address,
-            "drop_address": trip.drop_address,
-            "trip_type": trip.trip_type,
-            "vehicle_type": trip.vehicle_type,
-            "passenger_count": trip.passenger_count,
-            "fare": float(trip.fare) if trip.fare else None,
-            "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
-            "created_at": trip.created_at.isoformat() if trip.created_at else None
-        })
-    return result
+    """Get all available trips (OPEN status, no driver assigned) - OPTIMIZED"""
+    try:
+        # ✅ OPTIMIZED: Specialized method
+        trips = crud_trip.get_available_trips(db)
+        return trips
+    except Exception as e:
+        logger.error(f"Error fetching available trips: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch available trips"
+        )
+
 
 @router.get("/", response_model=None)
 def get_all_trips(
@@ -137,16 +41,66 @@ def get_all_trips(
     status_filter: str = None,
     db: Session = Depends(get_db)
 ):
-    """Get all trips with optional status filter"""
-    query = db.query(Trip)
-    
-    if status_filter:
-        query = query.filter(Trip.trip_status == status_filter)
-    
-    trips = query.offset(skip).limit(limit).all()
-    result = []
-    for trip in trips:
-        result.append({
+    """Get all trips with optional status filter - OPTIMIZED"""
+    try:
+        if status_filter:
+            # ✅ OPTIMIZED: Status-based query
+            trips = crud_trip.get_by_status(db, status=status_filter, skip=skip, limit=limit)
+        else:
+            # ✅ OPTIMIZED: Using CRUD layer
+            trips = crud_trip.get_multi(db, skip=skip, limit=limit, order_by="-created_at")
+        
+        # Convert to dict for response
+        result = []
+        for trip in trips:
+            result.append({
+                "trip_id": trip.trip_id,
+                "customer_name": trip.customer_name,
+                "customer_phone": trip.customer_phone,
+                "pickup_address": trip.pickup_address,
+                "drop_address": trip.drop_address,
+                "trip_type": trip.trip_type,
+                "vehicle_type": trip.vehicle_type,
+                "trip_status": trip.trip_status,
+                "assigned_driver_id": trip.assigned_driver_id,
+                "distance_km": float(trip.distance_km) if trip.distance_km else None,
+                "fare": float(trip.fare) if trip.fare else None,
+                "odo_start": trip.odo_start,
+                "odo_end": trip.odo_end,
+                "started_at": trip.started_at.isoformat() if trip.started_at else None,
+                "ended_at": trip.ended_at.isoformat() if trip.ended_at else None,
+                "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
+                "planned_end_at": trip.planned_end_at.isoformat() if trip.planned_end_at else None,
+                "is_manual_assignment": trip.is_manual_assignment,
+                "passenger_count": trip.passenger_count,
+                "errors": trip.errors,
+                "created_at": trip.created_at.isoformat() if trip.created_at else None,
+                "updated_at": trip.updated_at.isoformat() if trip.updated_at else None
+            })
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching trips: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch trips"
+        )
+
+
+@router.get("/{trip_id}")
+def get_trip_details(trip_id: str, db: Session = Depends(get_db)):
+    """Get trip details by ID with driver info - OPTIMIZED"""
+    try:
+        # ✅ OPTIMIZED: Eager load driver (1 query instead of 2)
+        trip = crud_trip.get_with_driver(db, trip_id)
+        
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error_code": ErrorCode.TRIP_NOT_FOUND, "message": "Trip not found"}
+            )
+        
+        # Build response with driver info
+        response = {
             "trip_id": trip.trip_id,
             "customer_name": trip.customer_name,
             "customer_phone": trip.customer_phone,
@@ -154,12 +108,12 @@ def get_all_trips(
             "drop_address": trip.drop_address,
             "trip_type": trip.trip_type,
             "vehicle_type": trip.vehicle_type,
-            "assigned_driver_id": trip.assigned_driver_id,
             "trip_status": trip.trip_status,
+            "assigned_driver_id": trip.assigned_driver_id,
             "distance_km": float(trip.distance_km) if trip.distance_km else None,
+            "fare": float(trip.fare) if trip.fare else None,
             "odo_start": trip.odo_start,
             "odo_end": trip.odo_end,
-            "fare": float(trip.fare) if trip.fare else None,
             "started_at": trip.started_at.isoformat() if trip.started_at else None,
             "ended_at": trip.ended_at.isoformat() if trip.ended_at else None,
             "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
@@ -169,73 +123,60 @@ def get_all_trips(
             "errors": trip.errors,
             "created_at": trip.created_at.isoformat() if trip.created_at else None,
             "updated_at": trip.updated_at.isoformat() if trip.updated_at else None
-        })
-    return result
-
-@router.get("/{trip_id}")
-def get_trip_details(trip_id: str, db: Session = Depends(get_db)):
-    """Get trip details by ID"""
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
+        }
+        
+        # Add driver info if available (already loaded via eager loading)
+        if trip.assigned_driver:
+            response["driver"] = {
+                "driver_id": trip.assigned_driver.driver_id,
+                "name": trip.assigned_driver.name,
+                "phone_number": str(trip.assigned_driver.phone_number),
+                "is_available": trip.assigned_driver.is_available
+            }
+        
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching trip {trip_id}: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Trip not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch trip"
         )
-    return {
-        "trip_id": trip.trip_id,
-        "customer_name": trip.customer_name,
-        "customer_phone": trip.customer_phone,
-        "pickup_address": trip.pickup_address,
-        "drop_address": trip.drop_address,
-        "trip_type": trip.trip_type,
-        "vehicle_type": trip.vehicle_type,
-        "assigned_driver_id": trip.assigned_driver_id,
-        "trip_status": trip.trip_status,
-        "distance_km": float(trip.distance_km) if trip.distance_km else None,
-        "odo_start": trip.odo_start,
-        "odo_end": trip.odo_end,
-        "fare": float(trip.fare) if trip.fare else None,
-        "started_at": trip.started_at.isoformat() if trip.started_at else None,
-        "ended_at": trip.ended_at.isoformat() if trip.ended_at else None,
-        "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
-        "planned_end_at": trip.planned_end_at.isoformat() if trip.planned_end_at else None,
-        "is_manual_assignment": trip.is_manual_assignment,
-        "passenger_count": trip.passenger_count,
-        "errors": trip.errors,
-        "created_at": trip.created_at.isoformat() if trip.created_at else None,
-        "updated_at": trip.updated_at.isoformat() if trip.updated_at else None
-    }
+
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_trip(trip: TripCreate, db: Session = Depends(get_db)):
-    """Create a new trip"""
-    # Generate UUID for trip_id
-    import uuid
-    trip_data = trip.dict()
-    trip_data['trip_id'] = str(uuid.uuid4())
-    
-    db_trip = Trip(**trip_data)
-    
-    # Get initial fare from tariff configuration or default to 0
-    tariff_config = db.query(VehicleTariffConfig).filter(
-        VehicleTariffConfig.vehicle_type == trip.vehicle_type,
-        VehicleTariffConfig.is_active == True
-    ).first()
-    
-    # Set initial fare based on driver allowance only (distance-based calculation happens at completion)
-    db_trip.fare = tariff_config.driver_allowance if tariff_config else 0.00
-    
-    db.add(db_trip)
-    db.commit()
-    db.refresh(db_trip)
-    
-    return {
-        "trip_id": db_trip.trip_id,
-        "customer_name": db_trip.customer_name,
-        "trip_status": db_trip.trip_status,
-        "fare": float(db_trip.fare),
-        "message": "Trip created successfully"
-    }
+    """Create a new trip - OPTIMIZED"""
+    try:
+        # Generate UUID
+        trip_data = trip.dict()
+        trip_data['trip_id'] = str(uuid.uuid4())
+        trip_data['trip_status'] = TripStatus.OPEN
+        
+        # Create trip
+        from app.models import Trip
+        db_trip = Trip(**trip_data)
+        db.add(db_trip)
+        db.commit()
+        db.refresh(db_trip)
+        
+        logger.info(f"Trip created: {db_trip.trip_id}")
+        
+        return {
+            "trip_id": db_trip.trip_id,
+            "customer_name": db_trip.customer_name,
+            "trip_status": db_trip.trip_status,
+            "message": "Trip created successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error creating trip: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create trip"
+        )
+
 
 @router.put("/{trip_id}")
 def update_trip(
@@ -243,55 +184,31 @@ def update_trip(
     trip_update: TripUpdate, 
     db: Session = Depends(get_db)
 ):
-    """Full trip edit for admin panel"""
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
+    """Update trip information - OPTIMIZED"""
+    try:
+        # ✅ OPTIMIZED: Get trip using CRUD
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
+        
+        # ✅ OPTIMIZED: Update using CRUD
+        updated_trip = crud_trip.update(db, db_obj=trip, obj_in=trip_update)
+        logger.info(f"Trip updated: {trip_id}")
+        
+        return updated_trip
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating trip {trip_id}: {e}", exc_info=True)
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Trip not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update trip"
         )
-    
-    update_data = trip_update.dict(exclude_unset=True)
-    
-    # Store old values for comparison
-    old_odo_start = trip.odo_start
-    old_odo_end = trip.odo_end
-    old_status = trip.trip_status
-    
-    for field, value in update_data.items():
-        setattr(trip, field, value)
-    
-    # Auto-manage trip status based on odometer readings
-    _auto_manage_trip_status(trip, old_odo_start, old_odo_end, old_status, db)
-    
-    db.commit()
-    db.refresh(trip)
-    
-    return {
-        "trip_id": trip.trip_id,
-        "customer_name": trip.customer_name,
-        "customer_phone": trip.customer_phone,
-        "pickup_address": trip.pickup_address,
-        "drop_address": trip.drop_address,
-        "trip_type": trip.trip_type,
-        "vehicle_type": trip.vehicle_type,
-        "assigned_driver_id": trip.assigned_driver_id,
-        "trip_status": trip.trip_status,
-        "distance_km": float(trip.distance_km) if trip.distance_km else None,
-        "odo_start": trip.odo_start,
-        "odo_end": trip.odo_end,
-        "fare": float(trip.fare) if trip.fare else None,
-        "started_at": trip.started_at.isoformat() if trip.started_at else None,
-        "ended_at": trip.ended_at.isoformat() if trip.ended_at else None,
-        "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
-        "planned_end_at": trip.planned_end_at.isoformat() if trip.planned_end_at else None,
-        "is_manual_assignment": trip.is_manual_assignment,
-        "passenger_count": trip.passenger_count,
-        "errors": trip.errors,
-        "created_at": trip.created_at.isoformat() if trip.created_at else None,
-        "updated_at": trip.updated_at.isoformat() if trip.updated_at else None,
-        "message": "Trip updated successfully"
-    }
+
 
 @router.patch("/{trip_id}/assign-driver/{driver_id}")
 def assign_driver_to_trip(
@@ -299,53 +216,53 @@ def assign_driver_to_trip(
     driver_id: str, 
     db: Session = Depends(get_db)
 ):
-    """Assign a driver to a trip"""
-    # Check if trip exists
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
+    """Assign a driver to a trip - OPTIMIZED"""
+    try:
+        # ✅ OPTIMIZED: Check trip exists
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
+        
+        # ✅ OPTIMIZED: Check driver exists and is available
+        driver = crud_driver.get(db, id=driver_id)
+        if not driver:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Driver not found"
+            )
+        
+        # ✅ Removed driver.is_available check to allow manual assignment by admin
+        
+        if not driver.is_approved:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Driver is not approved"
+            )
+        
+        # ✅ OPTIMIZED: Assign driver using CRUD
+        updated_trip = crud_trip.assign_driver(db, trip_id, driver_id)
+        
+        logger.info(f"Driver {driver_id} assigned to trip {trip_id}")
+        
+        return {
+            "message": "Driver assigned successfully",
+            "trip_id": trip_id,
+            "driver_id": driver_id,
+            "trip_status": updated_trip.trip_status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error assigning driver: {e}", exc_info=True)
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Trip not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to assign driver"
         )
-    
-    # Check if driver exists and is available
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
-    if not driver:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Driver not found"
-        )
-    
-    if not driver.is_available:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Driver is not available"
-        )
-    
-    if not driver.is_approved:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Driver is not approved"
-        )
-    
-    # Assign driver to trip
-    trip.assigned_driver_id = driver_id
-    trip.trip_status = "ASSIGNED"
-    trip.is_manual_assignment = True
-    
-    # Make driver unavailable
-    driver.is_available = False
-    
-    db.commit()
-    db.refresh(trip)
-    
-    return {
-        "message": "Driver assigned to trip successfully",
-        "trip_id": trip_id,
-        "driver_id": driver_id,
-        "driver_name": driver.name,
-        "trip_status": trip.trip_status
-    }
+
 
 @router.patch("/{trip_id}/status")
 def update_trip_status(
@@ -353,458 +270,334 @@ def update_trip_status(
     new_status: str, 
     db: Session = Depends(get_db)
 ):
-    """Update trip status"""
-    valid_statuses = ["OPEN", "ASSIGNED", "STARTED", "COMPLETED", "CANCELLED"]
-    
-    if new_status not in valid_statuses:
+    """Update trip status - OPTIMIZED"""
+    try:
+        # Validate status
+        valid_statuses = [TripStatus.OPEN, TripStatus.ASSIGNED, TripStatus.STARTED, TripStatus.COMPLETED, TripStatus.CANCELLED]
+        if new_status not in valid_statuses:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
+        
+        # ✅ OPTIMIZED: Update status using CRUD (auto-sets timestamps)
+        trip = crud_trip.update_status(db, trip_id, new_status)
+        
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
+        
+        logger.info(f"Trip {trip_id} status updated to {new_status}")
+        
+        return {
+            "message": f"Trip status updated to {new_status}",
+            "trip_id": trip_id,
+            "trip_status": new_status,
+            "fare": float(trip.fare) if trip.fare else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating trip status: {e}", exc_info=True)
+        db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid status. Valid statuses: {', '.join(valid_statuses)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update trip status"
         )
-    
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Trip not found"
-        )
-    
-    old_status = trip.trip_status
-    trip.trip_status = new_status
-    
-    # If trip is completed or cancelled, make driver available again
-    if new_status in ["COMPLETED", "CANCELLED"] and trip.assigned_driver_id:
-        driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-        if driver:
-            driver.is_available = True
-    
-    db.commit()
-    db.refresh(trip)
-    
-    return {
-        "message": f"Trip status updated from {old_status} to {new_status}",
-        "trip_id": trip_id,
-        "old_status": old_status,
-        "new_status": new_status
-    }
+
 
 @router.get("/driver/{driver_id}")
-def get_trips_by_driver(driver_id: str, db: Session = Depends(get_db)):
-    """Get all trips assigned to a specific driver"""
-    # Check if driver exists
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
-    if not driver:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Driver not found"
-        )
-    
-    trips = db.query(Trip).filter(Trip.assigned_driver_id == driver_id).all()
-    result = []
-    for trip in trips:
-        result.append({
-            "trip_id": trip.trip_id,
-            "customer_name": trip.customer_name,
-            "customer_phone": trip.customer_phone,
-            "pickup_address": trip.pickup_address,
-            "drop_address": trip.drop_address,
-            "trip_type": trip.trip_type,
-            "vehicle_type": trip.vehicle_type,
-            "assigned_driver_id": trip.assigned_driver_id,
-            "trip_status": trip.trip_status,
-            "distance_km": float(trip.distance_km) if trip.distance_km else None,
-            "odo_start": trip.odo_start,
-            "odo_end": trip.odo_end,
-            "fare": float(trip.fare) if trip.fare else None,
-            "started_at": trip.started_at.isoformat() if trip.started_at else None,
-            "ended_at": trip.ended_at.isoformat() if trip.ended_at else None,
-            "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
-            "planned_end_at": trip.planned_end_at.isoformat() if trip.planned_end_at else None,
-            "is_manual_assignment": trip.is_manual_assignment,
-            "passenger_count": trip.passenger_count,
-            "errors": trip.errors,
-            "created_at": trip.created_at.isoformat() if trip.created_at else None,
-            "updated_at": trip.updated_at.isoformat() if trip.updated_at else None
-        })
-    return result
-
-@router.get("/stats")
-def get_trip_statistics(db: Session = Depends(get_db)):
-    """Get trip statistics for admin dashboard"""
+def get_trips_by_driver(driver_id: str, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    """Get all trips assigned to a specific driver - OPTIMIZED"""
     try:
-        total_trips = db.query(Trip).count()
-        pending_trips = db.query(Trip).filter(Trip.trip_status == "OPEN").count()
-        assigned_trips = db.query(Trip).filter(Trip.trip_status == "ASSIGNED").count()
-        started_trips = db.query(Trip).filter(Trip.trip_status == "STARTED").count()
-        completed_trips = db.query(Trip).filter(Trip.trip_status == "COMPLETED").count()
-        cancelled_trips = db.query(Trip).filter(Trip.trip_status == "CANCELLED").count()
-        
-        return {
-            "total_trips": total_trips,
-            "pending_trips": pending_trips,
-            "assigned_trips": assigned_trips,
-            "started_trips": started_trips,
-            "completed_trips": completed_trips,
-            "cancelled_trips": cancelled_trips,
-            "active_trips": assigned_trips + started_trips
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-@router.get("/available-drivers")
-def get_available_drivers_for_trip(trip_id: str = None, db: Session = Depends(get_db)):
-    """Get available drivers for trip assignment"""
-    try:
-        # Get available and approved drivers
-        drivers = db.query(Driver).filter(
-            Driver.is_available == True,
-            Driver.is_approved == True
-        ).all()
+        # ✅ OPTIMIZED: Driver-specific query
+        trips = crud_trip.get_by_driver(db, driver_id=driver_id, skip=skip, limit=limit)
         
         result = []
-        for driver in drivers:
+        for trip in trips:
             result.append({
-                "driver_id": driver.driver_id,
-                "name": driver.name,
-                "phone_number": str(driver.phone_number) if driver.phone_number else None,
-                "primary_location": driver.primary_location,
-                "wallet_balance": float(driver.wallet_balance) if driver.wallet_balance else 0.0,
-                "is_available": driver.is_available,
-                "created_at": driver.created_at.isoformat() if driver.created_at else None
+                "trip_id": trip.trip_id,
+                "customer_name": trip.customer_name,
+                "pickup_address": trip.pickup_address,
+                "drop_address": trip.drop_address,
+                "trip_status": trip.trip_status,
+                "fare": float(trip.fare) if trip.fare else None,
+                "created_at": trip.created_at.isoformat() if trip.created_at else None
             })
         
-        return {
-            "available_drivers": result,
-            "total_available": len(result)
-        }
+        return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        logger.error(f"Error fetching trips for driver {driver_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch driver trips"
+        )
 
-@router.patch("/{trip_id}/unassign-driver")
-def unassign_driver_from_trip(trip_id: str, db: Session = Depends(get_db)):
-    """Remove assigned driver from trip"""
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    if not trip.assigned_driver_id:
-        raise HTTPException(status_code=400, detail="No driver assigned to this trip")
-    
-    if trip.trip_status in ["STARTED", "COMPLETED", "CANCELLED"]:
-        raise HTTPException(status_code=400, detail=f"Cannot unassign driver from trip with status {trip.trip_status}")
-    
-    # Make driver available again
-    driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-    if driver:
-        driver.is_available = True
-    
-    old_driver_id = trip.assigned_driver_id
-    trip.assigned_driver_id = None
-    trip.trip_status = "OPEN"
-    
-    db.commit()
-    
-    return {
-        "message": "Driver unassigned successfully",
-        "trip_id": trip_id,
-        "unassigned_driver_id": old_driver_id,
-        "new_status": "OPEN"
-    }
 
-@router.patch("/{trip_id}/cancel")
-def cancel_trip(trip_id: str, reason: str = "Cancelled by admin", db: Session = Depends(get_db)):
-    """Cancel a trip"""
+@router.get("/statistics/dashboard")
+def get_trip_statistics(db: Session = Depends(get_db)):
+    """Get trip statistics for admin dashboard - OPTIMIZED"""
     try:
-        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+        # ✅ OPTIMIZED: Single method call for all stats
+        stats = crud_trip.get_statistics(db)
+        return stats
+    except Exception as e:
+        logger.error(f"Error fetching trip statistics: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch statistics"
+        )
+
+
+@router.patch("/{trip_id}/odometer/start")
+def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(get_db)):
+    """Update trip starting odometer reading - OPTIMIZED"""
+    try:
+        # ✅ OPTIMIZED: Get trip using CRUD
+        trip = crud_trip.get(db, id=trip_id)
         if not trip:
-            raise HTTPException(status_code=404, detail="Trip not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
         
-        if trip.trip_status in ["COMPLETED", "CANCELLED"]:
-            raise HTTPException(status_code=400, detail=f"Cannot cancel trip with status {trip.trip_status}")
+        trip.odo_start = odo_start
         
-        old_status = trip.trip_status
-        trip.trip_status = "CANCELLED"
+        # Auto-start trip if not already started
+        if trip.trip_status == TripStatus.ASSIGNED:
+            trip.trip_status = TripStatus.STARTED
+            trip.started_at = datetime.utcnow()
         
-        # Make assigned driver available again
+        db.commit()
+        db.refresh(trip)
+        
+        logger.info(f"Trip {trip_id} odometer start updated to {odo_start}")
+        
+        return {
+            "message": "Odometer start updated",
+            "trip_id": trip_id,
+            "odo_start": odo_start,
+            "trip_status": trip.trip_status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating odometer start: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update odometer"
+        )
+
+
+@router.patch("/{trip_id}/odometer/end")
+def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db)):
+    """Update trip ending odometer reading and auto-complete trip with commission calculation"""
+    try:
+        # Import required models and constants
+        from app.models import Driver, WalletTransaction
+        from app.core.constants import DEFAULT_DRIVER_COMMISSION_PERCENT, WalletTransactionType
+        from decimal import Decimal
+        
+        # ✅ OPTIMIZED: Get trip using CRUD
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
+        
+        if not trip.odo_start:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot set end odometer without start odometer"
+            )
+        
+        if odo_end <= trip.odo_start:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="End odometer must be greater than start odometer"
+            )
+        
+        trip.odo_end = odo_end
+        trip.distance_km = odo_end - trip.odo_start
+        
+        # Variables to track commission and earnings
+        commission_amount = None
+        driver_earnings = None
+        
+        # Auto-complete trip
+        if trip.trip_status != TripStatus.COMPLETED:
+            trip.trip_status = TripStatus.COMPLETED
+            trip.ended_at = datetime.utcnow()
+            
+            # ✅ Calculate fare using CRUD (distance × per_km_rate only)
+            fare = crud_trip.calculate_fare(db, trip)
+            if fare:
+                trip.fare = fare
+                
+                # ✅ Calculate 10% commission
+                commission_amount = Decimal(fare) * Decimal(DEFAULT_DRIVER_COMMISSION_PERCENT / 100)
+                driver_earnings = Decimal(fare) - commission_amount
+                
+                logger.info(f"Trip {trip_id}: Fare=₹{fare}, Commission=₹{commission_amount}, Driver Earnings=₹{driver_earnings}")
+                
+                # ✅ Create wallet transactions and update driver balance
+                if trip.assigned_driver_id:
+                    # Get driver
+                    driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+                    
+                    if driver:
+                        # Create CREDIT transaction for driver earnings (NET amount after commission)
+                        wallet_credit = WalletTransaction(
+                            wallet_id=str(uuid.uuid4()),
+                            driver_id=trip.assigned_driver_id,
+                            trip_id=trip.trip_id,
+                            amount=driver_earnings,
+                            transaction_type=WalletTransactionType.CREDIT
+                        )
+                        db.add(wallet_credit)
+                        
+                        # Create COMMISSION transaction for record keeping
+                        wallet_commission = WalletTransaction(
+                            wallet_id=str(uuid.uuid4()),
+                            driver_id=trip.assigned_driver_id,
+                            trip_id=trip.trip_id,
+                            amount=commission_amount,
+                            transaction_type=WalletTransactionType.COMMISSION
+                        )
+                        db.add(wallet_commission)
+                        
+                        # Update driver wallet balance (add NET earnings only)
+                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + driver_earnings
+                        
+                        logger.info(f"Driver {trip.assigned_driver_id} wallet updated: +₹{driver_earnings} (after ₹{commission_amount} commission)")
+                    else:
+                        logger.warning(f"Driver {trip.assigned_driver_id} not found for wallet update")
+        
+        db.commit()
+        db.refresh(trip)
+        
+        logger.info(f"Trip {trip_id} completed with fare {trip.fare}")
+        
+        # Build response with commission details
+        response = {
+            "message": "Trip completed successfully",
+            "trip_id": trip_id,
+            "odo_end": odo_end,
+            "distance_km": float(trip.distance_km) if trip.distance_km else None,
+            "fare": float(trip.fare) if trip.fare else None,
+            "trip_status": trip.trip_status
+        }
+        
+        # Add commission details if calculated
+        if commission_amount is not None and driver_earnings is not None:
+            response["commission"] = float(commission_amount)
+            response["commission_percentage"] = DEFAULT_DRIVER_COMMISSION_PERCENT
+            response["driver_earnings"] = float(driver_earnings)
+            response["wallet_updated"] = True
+        
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating odometer end: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update odometer"
+        )
+
+
+@router.post("/{trip_id}/recalculate-fare")
+def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
+    """Manually recalculate fare for a completed trip and update wallet"""
+    try:
+        from app.models import Driver, WalletTransaction
+        from app.core.constants import DEFAULT_DRIVER_COMMISSION_PERCENT, WalletTransactionType
+        from decimal import Decimal
+        import uuid
+        
+        # ✅ OPTIMIZED: Get trip using CRUD
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
+        
+        # ✅ OPTIMIZED: Calculate fare using CRUD
+        new_fare = crud_trip.calculate_fare(db, trip)
+        
+        if not new_fare:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot calculate fare. Missing odometer readings or tariff config."
+            )
+        
+        old_fare = trip.fare or Decimal(0)
+        
+        # If fare hasn't changed, just return
+        if old_fare == new_fare:
+            return {
+                "message": "Fare is already up to date",
+                "trip_id": trip_id,
+                "fare": float(new_fare)
+            }
+
+        # Calculate difference to update wallet
+        old_commission = old_fare * Decimal(DEFAULT_DRIVER_COMMISSION_PERCENT / 100)
+        old_net = old_fare - old_commission
+        
+        new_commission = new_fare * Decimal(DEFAULT_DRIVER_COMMISSION_PERCENT / 100)
+        new_net = new_fare - new_commission
+        
+        net_difference = new_net - old_net
+        
+        # Update trip fare
+        trip.fare = new_fare
+        
+        # Update wallet if a driver is assigned
         if trip.assigned_driver_id:
             driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
             if driver:
-                driver.is_available = True
-        
+                # Create adjustment transaction
+                adj_type = WalletTransactionType.CREDIT if net_difference > 0 else WalletTransactionType.DEBIT
+                
+                adjustment = WalletTransaction(
+                    wallet_id=str(uuid.uuid4()),
+                    driver_id=trip.assigned_driver_id,
+                    trip_id=trip.trip_id,
+                    amount=abs(net_difference),
+                    transaction_type=adj_type,
+                    description=f"Fare Recalculation Adjustment ({DEFAULT_DRIVER_COMMISSION_PERCENT}% commission)"
+                )
+                db.add(adjustment)
+                
+                # Update balance
+                driver.wallet_balance = (driver.wallet_balance or Decimal(0)) + net_difference
+                
+                logger.info(f"Trip {trip_id} recalculated. Wallet adjusted by ₹{net_difference}")
+
         db.commit()
         db.refresh(trip)
         
         return {
-            "message": "Trip cancelled successfully",
+            "message": "Fare recalculated and wallet adjusted successfully",
             "trip_id": trip_id,
-            "old_status": old_status,
-            "new_status": "CANCELLED",
-            "reason": reason
+            "old_fare": float(old_fare),
+            "new_fare": float(new_fare),
+            "net_adjustment": float(net_difference)
         }
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Error recalculating fare: {e}", exc_info=True)
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-@router.patch("/{trip_id}/odometer-start")
-def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(get_db)):
-    """Update trip starting odometer reading and auto-start trip"""
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    old_odo_start = trip.odo_start
-    old_status = trip.trip_status
-    
-    trip.odo_start = odo_start
-    
-    # Use auto-management function
-    _auto_manage_trip_status(trip, old_odo_start, trip.odo_end, old_status, db)
-    
-    db.commit()
-    db.refresh(trip)
-    
-    return {
-        "message": "Trip started automatically with odometer reading",
-        "trip_id": trip_id,
-        "odo_start": odo_start,
-        "trip_status": trip.trip_status,
-        "started_at": trip.started_at.isoformat() if trip.started_at else None
-    }
-
-@router.patch("/{trip_id}/odometer-end")
-def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db)):
-    """Update trip ending odometer reading and auto-complete trip"""
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    old_odo_end = trip.odo_end
-    old_status = trip.trip_status
-    
-    trip.odo_end = odo_end
-    
-    # Use auto-management function
-    _auto_manage_trip_status(trip, trip.odo_start, old_odo_end, old_status, db)
-    
-    db.commit()
-    db.refresh(trip)
-    
-    return {
-        "message": "Trip completed automatically with fare calculation",
-        "trip_id": trip_id,
-        "odo_end": odo_end,
-        "distance_km": float(trip.distance_km) if trip.distance_km else None,
-        "trip_status": trip.trip_status,
-        "fare": float(trip.fare) if trip.fare else None,
-        "ended_at": trip.ended_at.isoformat() if trip.ended_at else None
-    }
-
-@router.patch("/fix-incomplete-trips")
-def fix_incomplete_trips(db: Session = Depends(get_db)):
-    """Fix trips that have both odometer readings but are still in STARTED status"""
-    try:
-        # Find trips with both odo readings but still STARTED
-        incomplete_trips = db.query(Trip).filter(
-            Trip.trip_status == "STARTED",
-            Trip.odo_start.isnot(None),
-            Trip.odo_end.isnot(None)
-        ).all()
-        
-        fixed_count = 0
-        for trip in incomplete_trips:
-            old_status = trip.trip_status
-            _auto_manage_trip_status(trip, None, None, old_status, db)
-            fixed_count += 1
-        
-        db.commit()
-        
-        return {
-            "message": f"Fixed {fixed_count} incomplete trips",
-            "fixed_trips": fixed_count
-        }
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-@router.get("/{trip_id}/fare-breakdown")
-def get_fare_breakdown(trip_id: str, db: Session = Depends(get_db)):
-    """Get detailed fare calculation breakdown for a trip"""
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-    
-    if not trip.distance_km:
-        raise HTTPException(status_code=400, detail="Trip distance not calculated yet")
-    
-    # Get tariff configuration
-    tariff_config = db.query(VehicleTariffConfig).filter(
-        VehicleTariffConfig.vehicle_type == trip.vehicle_type,
-        VehicleTariffConfig.is_active == True
-    ).first()
-    
-    if not tariff_config:
-        raise HTTPException(status_code=404, detail=f"No active tariff found for {trip.vehicle_type}")
-    
-    distance = float(trip.distance_km)
-    
-    if trip.trip_type and trip.trip_type.upper() == "ONE_WAY":
-        per_km_rate = float(tariff_config.one_way_per_km or 0)
-        min_km = float(tariff_config.one_way_min_km or 130)
-        trip_type_display = "One Way"
-    else:
-        per_km_rate = float(tariff_config.round_trip_per_km or 0)
-        min_km = float(tariff_config.round_trip_min_km or 250)
-        trip_type_display = "Round Trip"
-    
-    billable_km = max(distance, min_km)
-    distance_fare = billable_km * per_km_rate
-    driver_allowance = float(tariff_config.driver_allowance or 0)
-    total_fare = distance_fare + driver_allowance
-    
-    return {
-        "trip_id": trip_id,
-        "vehicle_type": trip.vehicle_type,
-        "trip_type": trip_type_display,
-        "actual_distance_km": distance,
-        "minimum_km_required": min_km,
-        "billable_km": billable_km,
-        "per_km_rate": per_km_rate,
-        "distance_fare": distance_fare,
-        "driver_allowance": driver_allowance,
-        "total_fare": total_fare,
-        "calculation": f"{billable_km} km × ₹{per_km_rate} + ₹{driver_allowance} allowance = ₹{total_fare}",
-        "minimum_applied": distance < min_km
-    }
-
-@router.patch("/{trip_id}/recalculate-fare")
-def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
-    """Manually recalculate fare for a completed trip"""
-    try:
-        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-        if not trip:
-            raise HTTPException(status_code=404, detail="Trip not found")
-        
-        if not trip.distance_km:
-            raise HTTPException(status_code=400, detail="Trip distance not available")
-        
-        # Get tariff configuration
-        tariff_config = db.query(VehicleTariffConfig).filter(
-            VehicleTariffConfig.vehicle_type == trip.vehicle_type,
-            VehicleTariffConfig.is_active == True
-        ).first()
-        
-        old_fare = float(trip.fare) if trip.fare else 0
-        
-        if tariff_config:
-            distance = float(trip.distance_km)
-            
-            if trip.trip_type and trip.trip_type.upper() == "ONE_WAY":
-                per_km_rate = float(tariff_config.one_way_per_km or 0)
-                min_km = float(tariff_config.one_way_min_km or 130)
-                billable_km = max(distance, min_km)
-                km_cost = billable_km * per_km_rate
-            else:
-                per_km_rate = float(tariff_config.round_trip_per_km or 0)
-                min_km = float(tariff_config.round_trip_min_km or 250)
-                billable_km = max(distance, min_km)
-                km_cost = billable_km * per_km_rate
-            
-            driver_allowance = float(tariff_config.driver_allowance or 0)
-            calculated_fare = km_cost + driver_allowance
-            trip.fare = Decimal(str(calculated_fare))
-            
-            # Deduct 2% wallet fee from KM cost only if trip is completed
-            wallet_fee_deducted = 0
-            if trip.trip_status == "COMPLETED" and trip.assigned_driver_id and km_cost > 0:
-                wallet_fee = km_cost * 0.02
-                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-                if driver:
-                    driver.wallet_balance = (driver.wallet_balance or 0) - Decimal(str(wallet_fee))
-                    wallet_fee_deducted = wallet_fee
-                    
-                    # Create wallet transaction record
-                    wallet_transaction = WalletTransaction(
-                        wallet_id=str(uuid.uuid4()),
-                        driver_id=trip.assigned_driver_id,
-                        trip_id=trip.trip_id,
-                        amount=Decimal(str(wallet_fee)),
-                        transaction_type="DEBIT"
-                    )
-                    db.add(wallet_transaction)
-        else:
-            # Fallback calculation
-            distance = float(trip.distance_km)
-            per_km_rate = 15.0
-            min_km = 130.0 if trip.trip_type and trip.trip_type.upper() == "ONE_WAY" else 250.0
-            driver_allowance = 300.0
-            
-            billable_km = max(distance, min_km)
-            km_cost = billable_km * per_km_rate
-            calculated_fare = km_cost + driver_allowance
-            trip.fare = Decimal(str(calculated_fare))
-            
-            wallet_fee_deducted = 0
-            if trip.trip_status == "COMPLETED" and trip.assigned_driver_id and km_cost > 0:
-                wallet_fee = km_cost * 0.02
-                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-                if driver:
-                    driver.wallet_balance = (driver.wallet_balance or 0) - Decimal(str(wallet_fee))
-                    wallet_fee_deducted = wallet_fee
-                    
-                    wallet_transaction = WalletTransaction(
-                        wallet_id=str(uuid.uuid4()),
-                        driver_id=trip.assigned_driver_id,
-                        trip_id=trip.trip_id,
-                        amount=Decimal(str(wallet_fee)),
-                        transaction_type="DEBIT"
-                    )
-                    db.add(wallet_transaction)
-        
-        db.commit()
-        db.refresh(trip)
-        
-        return {
-            "message": "Fare recalculated successfully",
-            "trip_id": trip_id,
-            "old_fare": old_fare,
-            "new_fare": float(trip.fare),
-            "wallet_fee_deducted": wallet_fee_deducted,
-            "distance_km": float(trip.distance_km)
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-@router.patch("/{trip_id}/fix-status")
-def fix_trip_status(trip_id: str, db: Session = Depends(get_db)):
-    """Fix a specific trip's status based on its odometer readings"""
-    try:
-        trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
-        if not trip:
-            raise HTTPException(status_code=404, detail="Trip not found")
-        
-        old_status = trip.trip_status
-        
-        # Apply auto-management logic
-        _auto_manage_trip_status(trip, None, None, old_status, db)
-        
-        db.commit()
-        db.refresh(trip)
-        
-        return {
-            "message": f"Trip status updated from {old_status} to {trip.trip_status}",
-            "trip_id": trip_id,
-            "old_status": old_status,
-            "new_status": trip.trip_status,
-            "distance_km": float(trip.distance_km) if trip.distance_km else None,
-            "fare": float(trip.fare) if trip.fare else None,
-            "ended_at": trip.ended_at.isoformat() if trip.ended_at else None
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to recalculate fare"
+        )
