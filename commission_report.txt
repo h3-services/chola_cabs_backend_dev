@@ -1,0 +1,72 @@
+================================================================================
+VEHICLE TARIFF CONFIGURATION - DATABASE DATA
+================================================================================
+
+Total Tariff Configurations: 3
+
+Tariff ID: 20dc54b3-f129-4283-9c64-6763cc4d808d
+Vehicle Type: suv
+One Way Per KM: ₹15.00
+Round Trip Per KM: ₹12.00
+Driver Allowance: ₹300.00
+One Way Min KM: 5
+Round Trip Min KM: 10
+Active: True
+Created: 2026-01-16 05:43:23
+Updated: 2026-01-27 11:31:01
+--------------------------------------------------------------------------------
+Tariff ID: 6200d414-fa77-4d88-bbce-eca55ed1adba
+Vehicle Type: sedan
+One Way Per KM: ₹14.00
+Round Trip Per KM: ₹13.00
+Driver Allowance: ₹300.00
+One Way Min KM: 130
+Round Trip Min KM: 250
+Active: True
+Created: 2026-01-24 13:05:49
+Updated: 2026-01-27 11:47:54
+--------------------------------------------------------------------------------
+Tariff ID: 9161d268-c3b3-4b13-b040-0f8a66e4d3a3
+Vehicle Type: innova
+One Way Per KM: ₹19.00
+Round Trip Per KM: ₹18.00
+Driver Allowance: ₹400.00
+One Way Min KM: 130
+Round Trip Min KM: 250
+Active: True
+Created: 2026-01-24 13:05:49
+Updated: 2026-01-27 09:14:47
+--------------------------------------------------------------------------------
+
+================================================================================
+COMMISSION CALCULATION - UPDATED TO 10%
+================================================================================
+
+Current Commission Percentage: 10.0%
+
+EXAMPLE: Sedan One-Way Trip
+--------------------------------------------------------------------------------
+Odometer Start: 1000
+Odometer End: 1250
+Distance: 250 km
+Per KM Rate (One Way): ₹14.00
+
+Fare Calculation:
+  Fare = Distance × Per KM Rate
+  Fare = 250 × ₹14.00
+  Fare = ₹3500.00
+
+Commission Calculation:
+  Commission = Fare × 10.0%
+  Commission = ₹3500.00 × 0.1
+  Commission = ₹350.00
+
+Driver Receives:
+  Driver Amount = Fare - Commission
+  Driver Amount = ₹3500.00 - ₹350.00
+  Driver Amount = ₹3150.00
+
+Note: Driver allowance (₹300.00) is NOT included in fare calculation
+
+================================================================================
+Report generated successfully!
