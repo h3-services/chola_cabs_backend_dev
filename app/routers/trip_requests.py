@@ -141,6 +141,9 @@ def approve_request(request_id: str, db: Session = Depends(get_db)):
     if trip.assigned_driver_id:
         raise HTTPException(status_code=400, detail="Trip already assigned")
     
+    # Allow admin to assign both available and unavailable drivers
+    # No availability check - admin has full control
+    
     # Assign driver to trip
     trip.assigned_driver_id = request.driver_id
     trip.trip_status = "ASSIGNED"

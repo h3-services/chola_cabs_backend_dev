@@ -226,7 +226,7 @@ def assign_driver_to_trip(
                 detail="Trip not found"
             )
         
-        # ✅ OPTIMIZED: Check driver exists and is available
+        # ✅ OPTIMIZED: Check driver exists
         driver = crud_driver.get(db, id=driver_id)
         if not driver:
             raise HTTPException(
@@ -234,7 +234,8 @@ def assign_driver_to_trip(
                 detail="Driver not found"
             )
         
-        # ✅ Removed driver.is_available check to allow manual assignment by admin
+        # ✅ Allow admin to assign both available and unavailable drivers
+        # No availability check - admin has full control
         
         if not driver.is_approved:
             raise HTTPException(
