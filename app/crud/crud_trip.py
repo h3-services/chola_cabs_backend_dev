@@ -179,7 +179,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         - One Way: Min 130 KM
         - Round Trip: Min 250 KM
         """
-        if not trip.odo_start or not trip.odo_end:
+        if trip.odo_start is None or trip.odo_end is None:
             return None
         
         from app.models import VehicleTariffConfig

@@ -410,7 +410,7 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
                 detail="Trip not found"
             )
         
-        if not trip.odo_start:
+        if trip.odo_start is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot set end odometer without start odometer"
