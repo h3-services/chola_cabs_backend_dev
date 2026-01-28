@@ -439,8 +439,21 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
             if fare:
                 trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 
-                # ✅ Calculate 10% commission safely
-                comm_pct = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")
+                # ✅ OPTIMIZED: Get dynamic commission percentage from tariff config
+                commission_percent = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT))  # Default fallback
+                
+                # Fetch tariff config for this vehicle type
+                from app.models import VehicleTariffConfig
+                tariff_config = db.query(VehicleTariffConfig).filter(
+                    VehicleTariffConfig.vehicle_type == trip.vehicle_type,
+                    VehicleTariffConfig.is_active == True
+                ).first()
+                
+                if tariff_config and tariff_config.driver_commission is not None:
+                    commission_percent = tariff_config.driver_commission
+                
+                # Calculate commission amount
+                comm_pct = commission_percent / Decimal("100")
                 commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 
                 logger.info(f"Trip {trip_id}: Fare=₹{trip.fare}, Commission=₹{commission_amount}")
@@ -486,7 +499,12 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
         # Add commission details if calculated
         if commission_amount is not None:
             response["commission_deducted"] = float(commission_amount)
-            response["commission_percentage"] = DEFAULT_DRIVER_COMMISSION_PERCENT
+            # Use local variable if defined, otherwise fetch or default (safely)
+            if 'commission_percent' in locals():
+                 response["commission_percentage"] = float(commission_percent)
+            else:
+                 response["commission_percentage"] = DEFAULT_DRIVER_COMMISSION_PERCENT
+            
             response["driver_collects_from_customer"] = float(trip.fare) if trip.fare else 0.0
             response["wallet_updated"] = True
         
@@ -539,9 +557,20 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
                 "fare": float(new_fare)
             }
 
+        # Fetch tariff config for commission rate
+        from app.models import VehicleTariffConfig
+        tariff_config = db.query(VehicleTariffConfig).filter(
+            VehicleTariffConfig.vehicle_type == trip.vehicle_type,
+            VehicleTariffConfig.is_active == True
+        ).first()
+        
+        commission_percent = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT))
+        if tariff_config and tariff_config.driver_commission is not None:
+            commission_percent = tariff_config.driver_commission
+
         # Calculate difference in COMMISSION to update wallet
-        old_commission = (old_fare * Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")).quantize(Decimal("0.01"))
-        new_commission = (new_fare * Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")).quantize(Decimal("0.01"))
+        old_commission = (old_fare * commission_percent / Decimal("100")).quantize(Decimal("0.01"))
+        new_commission = (new_fare * commission_percent / Decimal("100")).quantize(Decimal("0.01"))
         
         commission_difference = new_commission - old_commission
         
