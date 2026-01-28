@@ -132,6 +132,8 @@ class TripBase(BaseModel):
     trip_type: str  # one_way, round_trip
     vehicle_type: str
     passenger_count: Optional[int] = 1
+    pet_count: Optional[int] = 0
+    luggage_count: Optional[int] = 0
     planned_start_at: Optional[datetime] = None
     planned_end_at: Optional[datetime] = None
 
@@ -157,6 +159,8 @@ class TripUpdate(BaseModel):
     planned_end_at: Optional[datetime] = None
     is_manual_assignment: Optional[bool] = None
     passenger_count: Optional[int] = None
+    pet_count: Optional[int] = None
+    luggage_count: Optional[int] = None
 
 class TripStatusUpdate(BaseModel):
     status: str
@@ -173,6 +177,8 @@ class TripResponse(TripBase):
     ended_at: Optional[datetime] = None
     is_manual_assignment: bool
     errors: Optional[str] = None
+    pet_count: Optional[int] = 0
+    luggage_count: Optional[int] = 0
     created_at: datetime
     updated_at: datetime
     

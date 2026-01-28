@@ -73,6 +73,8 @@ def get_all_trips(
                 "planned_end_at": trip.planned_end_at.isoformat() if trip.planned_end_at else None,
                 "is_manual_assignment": trip.is_manual_assignment,
                 "passenger_count": trip.passenger_count,
+                "pet_count": trip.pet_count,
+                "luggage_count": trip.luggage_count,
                 "errors": trip.errors,
                 "created_at": trip.created_at.isoformat() if trip.created_at else None,
                 "updated_at": trip.updated_at.isoformat() if trip.updated_at else None
@@ -120,6 +122,8 @@ def get_trip_details(trip_id: str, db: Session = Depends(get_db)):
             "planned_end_at": trip.planned_end_at.isoformat() if trip.planned_end_at else None,
             "is_manual_assignment": trip.is_manual_assignment,
             "passenger_count": trip.passenger_count,
+            "pet_count": trip.pet_count,
+            "luggage_count": trip.luggage_count,
             "errors": trip.errors,
             "created_at": trip.created_at.isoformat() if trip.created_at else None,
             "updated_at": trip.updated_at.isoformat() if trip.updated_at else None

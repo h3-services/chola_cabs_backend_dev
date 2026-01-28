@@ -89,6 +89,8 @@ class Trip(Base):
     planned_end_at = Column(DateTime, nullable=True)
     is_manual_assignment = Column(Boolean, default=False)
     passenger_count = Column(Integer, default=1)
+    pet_count = Column(Integer, default=0)
+    luggage_count = Column(Integer, default=0)
     errors = Column(JSON, nullable=True)
     
     # Relationships
