@@ -179,7 +179,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         - One Way: Min 130 KM
         - Round Trip: Min 250 KM
         """
-        if not trip.odo_start or not trip.odo_end:
+        if trip.odo_start is None or trip.odo_end is None:
             return None
         
         from app.models import VehicleTariffConfig
@@ -239,7 +239,18 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                 
                 # ✅ ONLY DEBIT commission from wallet (Customer pays driver directly)
                 if trip.fare and trip.assigned_driver_id:
-                    comm_pct = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")
+                    # Get dynamic commission percentage
+                    commission_percent = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT))
+                    
+                    tariff_config = db.query(VehicleTariffConfig).filter(
+                        VehicleTariffConfig.vehicle_type == trip.vehicle_type,
+                        VehicleTariffConfig.is_active == True
+                    ).first()
+                    
+                    if tariff_config and tariff_config.driver_commission is not None:
+                        commission_percent = tariff_config.driver_commission
+                    
+                    comm_pct = commission_percent / Decimal("100")
                     commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                     
                     # Get driver

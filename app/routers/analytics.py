@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from app.database import get_db
-from app.models import Trip, Driver
+from app.models import Trip, Driver, WalletTransaction
 from app.schemas import (
     DashboardSummaryResponse, MonthlyRevenueResponse, MonthlyRevenueItem,
     VehicleTypeRevenueResponse, VehicleTypeRevenueItem
@@ -21,16 +21,18 @@ router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 def get_dashboard_summary(db: Session = Depends(get_db)):
     """Get dashboard summary statistics"""
     try:
-        # Total revenue from completed trips
-        total_revenue = db.query(func.sum(Trip.fare)).filter(
-            Trip.trip_status == "COMPLETED"
+        # Total revenue from completed trips (Commission)
+        total_revenue = db.query(func.sum(WalletTransaction.amount)).filter(
+            WalletTransaction.transaction_type == "DEBIT",
+            WalletTransaction.trip_id != None
         ).scalar() or Decimal('0')
         
         # Today's revenue
         today = date.today()
-        today_revenue = db.query(func.sum(Trip.fare)).filter(
-            Trip.trip_status == "COMPLETED",
-            func.date(Trip.created_at) == today
+        today_revenue = db.query(func.sum(WalletTransaction.amount)).filter(
+            WalletTransaction.transaction_type == "DEBIT",
+            WalletTransaction.trip_id != None,
+            func.date(WalletTransaction.created_at) == today
         ).scalar() or Decimal('0')
         
         # Total trips
@@ -98,16 +100,17 @@ def get_monthly_revenue(
 ):
     """Get monthly revenue breakdown for a specific year"""
     try:
-        # Query monthly revenue data
+        # Query monthly revenue data (Commission only)
         monthly_data = db.query(
-            extract('month', Trip.created_at).label('month'),
-            func.sum(Trip.fare).label('revenue'),
-            func.count(Trip.trip_id).label('trips')
+            extract('month', WalletTransaction.created_at).label('month'),
+            func.sum(WalletTransaction.amount).label('revenue'),
+            func.count(WalletTransaction.trip_id).label('trips')
         ).filter(
-            extract('year', Trip.created_at) == year,
-            Trip.trip_status == "COMPLETED"
+            extract('year', WalletTransaction.created_at) == year,
+            WalletTransaction.transaction_type == "DEBIT",
+            WalletTransaction.trip_id != None
         ).group_by(
-            extract('month', Trip.created_at)
+            extract('month', WalletTransaction.created_at)
         ).all()
         
         # Month names mapping
@@ -165,12 +168,17 @@ def get_revenue_by_vehicle_type(
 ):
     """Get revenue breakdown by vehicle type"""
     try:
-        # Base query
+        # Base query (Commission only)
         query = db.query(
             Trip.vehicle_type,
-            func.sum(Trip.fare).label('revenue'),
+            func.sum(WalletTransaction.amount).label('revenue'),
             func.count(Trip.trip_id).label('trips')
-        ).filter(Trip.trip_status == "COMPLETED")
+        ).join(
+            WalletTransaction, Trip.trip_id == WalletTransaction.trip_id
+        ).filter(
+            WalletTransaction.transaction_type == "DEBIT",
+            Trip.trip_status == "COMPLETED"
+        )
         
         # Add year filter if provided
         if year:
@@ -217,21 +225,22 @@ def get_12_months_revenue(db: Session = Depends(get_db)):
         start_date = current_date - relativedelta(months=11)
         start_date = start_date.replace(day=1)  # Start from first day of month
         
-        # Query monthly revenue for last 12 months
+        # Query monthly revenue for last 12 months (Commission only)
         monthly_data = db.query(
-            extract('year', Trip.created_at).label('year'),
-            extract('month', Trip.created_at).label('month'),
-            func.sum(Trip.fare).label('revenue'),
-            func.count(Trip.trip_id).label('trips')
+            extract('year', WalletTransaction.created_at).label('year'),
+            extract('month', WalletTransaction.created_at).label('month'),
+            func.sum(WalletTransaction.amount).label('revenue'),
+            func.count(WalletTransaction.trip_id).label('trips')
         ).filter(
-            Trip.trip_status == "COMPLETED",
-            func.date(Trip.created_at) >= start_date
+            WalletTransaction.transaction_type == "DEBIT",
+            WalletTransaction.trip_id != None,
+            func.date(WalletTransaction.created_at) >= start_date
         ).group_by(
-            extract('year', Trip.created_at),
-            extract('month', Trip.created_at)
+            extract('year', WalletTransaction.created_at),
+            extract('month', WalletTransaction.created_at)
         ).order_by(
-            extract('year', Trip.created_at),
-            extract('month', Trip.created_at)
+            extract('year', WalletTransaction.created_at),
+            extract('month', WalletTransaction.created_at)
         ).all()
         
         # Month names mapping
@@ -301,27 +310,29 @@ def get_revenue_by_date_range(
                 detail="Start date must be before end date"
             )
         
-        # Query revenue in date range
+        # Query revenue in date range (Commission only)
         revenue_data = db.query(
-            func.sum(Trip.fare).label('total_revenue'),
-            func.count(Trip.trip_id).label('total_trips')
+            func.sum(WalletTransaction.amount).label('total_revenue'),
+            func.count(WalletTransaction.trip_id).label('total_trips')
         ).filter(
-            Trip.trip_status == "COMPLETED",
-            func.date(Trip.created_at) >= start_date,
-            func.date(Trip.created_at) <= end_date
+            WalletTransaction.transaction_type == "DEBIT",
+            WalletTransaction.trip_id != None,
+            func.date(WalletTransaction.created_at) >= start_date,
+            func.date(WalletTransaction.created_at) <= end_date
         ).first()
         
         # Daily breakdown
         daily_data = db.query(
-            func.date(Trip.created_at).label('date'),
-            func.sum(Trip.fare).label('revenue'),
-            func.count(Trip.trip_id).label('trips')
+            func.date(WalletTransaction.created_at).label('date'),
+            func.sum(WalletTransaction.amount).label('revenue'),
+            func.count(WalletTransaction.trip_id).label('trips')
         ).filter(
-            Trip.trip_status == "COMPLETED",
-            func.date(Trip.created_at) >= start_date,
-            func.date(Trip.created_at) <= end_date
+            WalletTransaction.transaction_type == "DEBIT",
+            WalletTransaction.trip_id != None,
+            func.date(WalletTransaction.created_at) >= start_date,
+            func.date(WalletTransaction.created_at) <= end_date
         ).group_by(
-            func.date(Trip.created_at)
+            func.date(WalletTransaction.created_at)
         ).all()
         
         return {

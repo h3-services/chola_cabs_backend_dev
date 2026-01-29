@@ -89,6 +89,8 @@ class Trip(Base):
     planned_end_at = Column(DateTime, nullable=True)
     is_manual_assignment = Column(Boolean, default=False)
     passenger_count = Column(Integer, default=1)
+    pet_count = Column(Integer, default=0)
+    luggage_count = Column(Integer, default=0)
     errors = Column(JSON, nullable=True)
     
     # Relationships
@@ -154,6 +156,7 @@ class VehicleTariffConfig(Base):
     one_way_min_km = Column(Integer, nullable=False)
     round_trip_min_km = Column(Integer, nullable=False)
     is_active = Column(Boolean, default=True)
+    driver_commission = Column(DECIMAL(5, 2), default=10.00, nullable=False)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 

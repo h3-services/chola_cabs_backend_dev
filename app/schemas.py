@@ -145,6 +145,8 @@ class TripBase(BaseModel):
     trip_type: str  # one_way, round_trip
     vehicle_type: str
     passenger_count: Optional[int] = 1
+    pet_count: Optional[int] = 0
+    luggage_count: Optional[int] = 0
     planned_start_at: Optional[datetime] = None
     planned_end_at: Optional[datetime] = None
 
@@ -170,6 +172,8 @@ class TripUpdate(BaseModel):
     planned_end_at: Optional[datetime] = None
     is_manual_assignment: Optional[bool] = None
     passenger_count: Optional[int] = None
+    pet_count: Optional[int] = None
+    luggage_count: Optional[int] = None
 
 class TripStatusUpdate(BaseModel):
     status: str
@@ -186,6 +190,8 @@ class TripResponse(TripBase):
     ended_at: Optional[datetime] = None
     is_manual_assignment: bool
     errors: Optional[str] = None
+    pet_count: Optional[int] = 0
+    luggage_count: Optional[int] = 0
     created_at: datetime
     updated_at: datetime
     
@@ -291,6 +297,7 @@ class VehicleTariffConfigBase(BaseModel):
     round_trip_per_km: Decimal
     round_trip_min_km: int
     driver_allowance: Decimal
+    driver_commission: Decimal = Decimal("10.00")
     is_active: bool = True
 
 class VehicleTariffConfigCreate(VehicleTariffConfigBase):
@@ -303,6 +310,7 @@ class VehicleTariffConfigUpdate(BaseModel):
     round_trip_per_km: Optional[Decimal] = None
     round_trip_min_km: Optional[int] = None
     driver_allowance: Optional[Decimal] = None
+    driver_commission: Optional[Decimal] = None
     is_active: Optional[bool] = None
 
 class VehicleTariffConfigResponse(VehicleTariffConfigBase):
