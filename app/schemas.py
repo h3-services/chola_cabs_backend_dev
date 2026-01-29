@@ -111,7 +111,8 @@ class VehicleUpdate(BaseModel):
     seating_capacity: Optional[int] = None
     rc_expiry_date: Optional[date] = None
     fc_expiry_date: Optional[date] = None
-
+    vehicle_inside_url: Optional[str] = None
+    
 class VehicleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
     
@@ -131,6 +132,7 @@ class VehicleResponse(BaseModel):
     vehicle_back_url: Optional[str] = None
     vehicle_left_url: Optional[str] = None
     vehicle_right_url: Optional[str] = None
+    vehicle_inside_url: Optional[str] = None
     vehicle_approved: bool
     errors: Optional[dict] = None
     created_at: datetime

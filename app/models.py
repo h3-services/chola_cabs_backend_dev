@@ -57,6 +57,7 @@ class Vehicle(Base):
     vehicle_back_url = Column(String(255), nullable=True)
     vehicle_left_url = Column(String(255), nullable=True)
     vehicle_right_url = Column(String(255), nullable=True)
+    vehicle_inside_url = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     errors = Column(JSON, nullable=True)
