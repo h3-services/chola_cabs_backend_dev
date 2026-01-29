@@ -269,6 +269,79 @@ def assign_driver_to_trip(
         )
 
 
+@router.patch("/{trip_id}/unassign")
+def unassign_driver_from_trip(
+    trip_id: str, 
+    db: Session = Depends(get_db)
+):
+    """Unassign driver from trip and reset status (Admin only)"""
+    try:
+        # Check trip exists
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
+        
+        if not trip.assigned_driver_id:
+             raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Trip has no assigned driver"
+            )
+
+        # Allow unassign only if trip is not started/completed/cancelled (unless strictly needed, but safe default)
+        if trip.trip_status in [TripStatus.STARTED, TripStatus.COMPLETED, TripStatus.CANCELLED]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot unassign driver from trip with status {trip.trip_status}"
+            )
+
+        driver_id = trip.assigned_driver_id
+        
+        # Update driver availability
+        driver = crud_driver.get(db, id=driver_id)
+        if driver:
+             driver.is_available = True
+        
+        # Reset trip
+        trip.assigned_driver_id = None
+        trip.trip_status = TripStatus.OPEN 
+        
+        # Handle TripDriverRequest - set accepted request to cancelled
+        from app.models import TripDriverRequest
+        accepted_request = db.query(TripDriverRequest).filter(
+            TripDriverRequest.trip_id == trip_id,
+            TripDriverRequest.driver_id == driver_id,
+            TripDriverRequest.status == "ACCEPTED"
+        ).first()
+
+        if accepted_request:
+            accepted_request.status = "CANCELLED"
+
+        db.commit()
+        db.refresh(trip)
+        
+        logger.info(f"Driver {driver_id} unassigned from trip {trip_id}")
+        
+        return {
+            "message": "Driver unassigned successfully",
+            "trip_id": trip_id,
+            "previous_driver_id": driver_id,
+            "trip_status": trip.trip_status
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error unassigning driver: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unassign driver"
+        )
+
+
 @router.patch("/{trip_id}/status")
 def update_trip_status(
     trip_id: str, 
