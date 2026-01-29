@@ -342,7 +342,7 @@ class ErrorHandlingResponse(BaseModel):
     error_type: str
     error_code: int  # Changed to int
     error_description: str
-    created_at: datetime
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
