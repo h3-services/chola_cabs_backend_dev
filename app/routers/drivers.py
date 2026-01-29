@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from app.api.deps import get_db
 from app.crud import crud_driver, crud_driver_location
-from app.schemas import DriverCreate, DriverUpdate, FCMTokenRequest, FCMTokenResponse, DriverLocationUpdate, DriverLocationResponse
+from app.schemas import DriverCreate, DriverUpdate, FCMTokenRequest, FCMTokenResponse, DriverLocationUpdate, DriverLocationResponse, DriverLocationWithDetails
 from app.core.logging import get_logger
 from app.core.constants import ErrorCode, KYCStatus
 import uuid
@@ -66,6 +66,51 @@ def get_all_drivers(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch drivers"
+        )
+
+
+@router.get("/locations/map", response_model=List[DriverLocationWithDetails])
+def get_all_active_driver_locations(db: Session = Depends(get_db)):
+    """Get all active driver locations for map view"""
+    try:
+        locations = crud_driver_location.driver_location.get_all(db)
+        
+        result = []
+        for loc in locations:
+            # Safely get driver details if relationship exists
+            driver_name = loc.driver.name if loc.driver else "Unknown"
+            phone = str(loc.driver.phone_number) if loc.driver else None
+            is_available = loc.driver.is_available if loc.driver else False
+            
+            # Try to find vehicle if possible (optional)
+            # This might need another query or assume relationship is loaded?
+            # Driver model has vehicles relationship.
+            vehicle_type = None
+            if loc.driver and loc.driver.vehicles:
+                # Get the first approved vehicle or just first
+                vehicle = next((v for v in loc.driver.vehicles if v.vehicle_approved), None)
+                if not vehicle and loc.driver.vehicles:
+                    vehicle = loc.driver.vehicles[0]
+                if vehicle:
+                    vehicle_type = vehicle.vehicle_type
+
+            result.append({
+                "driver_id": loc.driver_id,
+                "latitude": loc.latitude,
+                "longitude": loc.longitude,
+                "last_updated": loc.last_updated,
+                "driver_name": driver_name,
+                "phone_number": phone,
+                "is_available": is_available,
+                "vehicle_type": vehicle_type
+            })
+            
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching map locations: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch map locations"
         )
 
 

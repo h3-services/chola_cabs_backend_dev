@@ -88,6 +88,15 @@ class DriverLocationResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class DriverLocationWithDetails(DriverLocationResponse):
+    driver_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    is_available: bool = False
+    vehicle_type: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 # Vehicle Schemas
 class VehicleBase(BaseModel):
     vehicle_type: str

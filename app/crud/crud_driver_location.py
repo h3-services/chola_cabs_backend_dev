@@ -26,4 +26,11 @@ class CRUDDriverLocation:
         db.refresh(db_location)
         return db_location
 
+    def get_all(self, db: Session):
+        """Get all driver locations with driver details"""
+        from sqlalchemy.orm import joinedload
+        return db.query(DriverLiveLocation).options(
+            joinedload(DriverLiveLocation.driver)
+        ).all()
+
 driver_location = CRUDDriverLocation()
