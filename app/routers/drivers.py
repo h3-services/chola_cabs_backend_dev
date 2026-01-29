@@ -79,6 +79,7 @@ def get_all_active_driver_locations(db: Session = Depends(get_db)):
         for loc in locations:
             # Safely get driver details if relationship exists
             driver_name = loc.driver.name if loc.driver else "Unknown"
+            phone_number = str(loc.driver.phone_number) if loc.driver and loc.driver.phone_number else None
             photo_url = loc.driver.photo_url if loc.driver else None
             
             result.append({
@@ -87,6 +88,7 @@ def get_all_active_driver_locations(db: Session = Depends(get_db)):
                 "longitude": loc.longitude,
                 "last_updated": loc.last_updated,
                 "driver_name": driver_name,
+                "phone_number": phone_number,
                 "photo_url": photo_url
             })
             

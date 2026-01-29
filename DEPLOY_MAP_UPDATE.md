@@ -1,12 +1,13 @@
-# Deploy Map Update
+# Deploy Map Update (v2)
 
 ## Changes
-The `/drivers/locations/map` endpoint has been updated to return simplified data as requested:
+The `/drivers/locations/map` endpoint has been updated to include **phone number**:
 - `driver_id`
 - `latitude`
 - `longitude`
 - `last_updated`
 - `driver_name`
+- `phone_number` (NEW)
 - `photo_url`
 
 ## Deployment Steps
@@ -20,8 +21,7 @@ systemctl restart cab-api
 ```
 
 ## Verify
-Test the endpoint (it should now include `photo_url` and exclude unnecessary fields):
-
+Test the endpoint:
 ```bash
 curl http://localhost:8000/api/v1/drivers/locations/map
 ```

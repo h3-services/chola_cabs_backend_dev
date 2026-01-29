@@ -90,6 +90,7 @@ class DriverLocationResponse(BaseModel):
 
 class DriverLocationWithDetails(DriverLocationResponse):
     driver_name: Optional[str] = None
+    phone_number: Optional[str] = None
     photo_url: Optional[str] = None
     
     class Config:
