@@ -75,6 +75,19 @@ class DriverResponse(DriverBase):
     class Config:
         from_attributes = True
 
+class DriverLocationUpdate(BaseModel):
+    latitude: Decimal
+    longitude: Decimal
+
+class DriverLocationResponse(BaseModel):
+    driver_id: str
+    latitude: Decimal
+    longitude: Decimal
+    last_updated: datetime
+    
+    class Config:
+        from_attributes = True
+
 # Vehicle Schemas
 class VehicleBase(BaseModel):
     vehicle_type: str

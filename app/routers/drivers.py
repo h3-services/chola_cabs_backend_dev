@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.api.deps import get_db
-from app.crud import crud_driver
-from app.schemas import DriverCreate, DriverUpdate, FCMTokenRequest, FCMTokenResponse
+from app.crud import crud_driver, crud_driver_location
+from app.schemas import DriverCreate, DriverUpdate, FCMTokenRequest, FCMTokenResponse, DriverLocationUpdate, DriverLocationResponse
 from app.core.logging import get_logger
 from app.core.constants import ErrorCode, KYCStatus
 import uuid
@@ -569,4 +569,64 @@ def clear_driver_errors(driver_id: str, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to clear driver errors"
+        )
+
+
+@router.post("/{driver_id}/location", response_model=DriverLocationResponse)
+def update_driver_location(
+    driver_id: str,
+    location: DriverLocationUpdate,
+    db: Session = Depends(get_db)
+):
+    """Update driver's real-time location (High Frequency)"""
+    try:
+        # Check driver exists first (read-only check from drivers table)
+        driver = crud_driver.get(db, id=driver_id)
+        if not driver:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Driver not found"
+            )
+        
+        # Update ONLY the location table
+        db_location = crud_driver_location.driver_location.update(db, driver_id, location)
+        
+        return db_location
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating driver {driver_id} location: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update driver location"
+        )
+
+
+@router.get("/{driver_id}/location", response_model=DriverLocationResponse)
+def get_driver_location(driver_id: str, db: Session = Depends(get_db)):
+    """Get driver's real-time location"""
+    try:
+        # Check driver exists
+        driver = crud_driver.get(db, id=driver_id)
+        if not driver:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Driver not found"
+            )
+            
+        location = crud_driver_location.driver_location.get(db, driver_id)
+        if not location:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Location not found for this driver"
+            )
+            
+        return location
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching driver {driver_id} location: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch driver location"
         )

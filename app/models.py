@@ -181,3 +181,14 @@ class Admin(Base):
     
     # Self-referential relationship
     creator = relationship("Admin", remote_side=[admin_id], backref="created_admins")
+
+class DriverLiveLocation(Base):
+    __tablename__ = "driver_live_location"
+    
+    driver_id = Column(String(36), ForeignKey("drivers.driver_id", ondelete="CASCADE"), primary_key=True)
+    latitude = Column(DECIMAL(10, 8), nullable=False)
+    longitude = Column(DECIMAL(11, 8), nullable=False)
+    last_updated = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationship
+    driver = relationship("Driver", backref="live_location")
