@@ -1,13 +1,16 @@
-# Deploy Map Update (v2)
+# Deploy Map Update (v3)
 
 ## Changes
-The `/drivers/locations/map` endpoint has been updated to include **phone number**:
+Added standard **Get All Locations** endpoint alias:
+- `GET /api/v1/drivers/locations`
+- `GET /api/v1/drivers/locations/map` (Still works)
+
+Both return:
 - `driver_id`
-- `latitude`
-- `longitude`
+- `latitude`, `longitude`
 - `last_updated`
 - `driver_name`
-- `phone_number` (NEW)
+- `phone_number`
 - `photo_url`
 
 ## Deployment Steps
@@ -21,7 +24,7 @@ systemctl restart cab-api
 ```
 
 ## Verify
-Test the endpoint:
+Test the new standard endpoint:
 ```bash
-curl http://localhost:8000/api/v1/drivers/locations/map
+curl http://localhost:8000/api/v1/drivers/locations
 ```

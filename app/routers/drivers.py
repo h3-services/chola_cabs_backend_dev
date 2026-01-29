@@ -69,6 +69,7 @@ def get_all_drivers(
         )
 
 
+@router.get("/locations", response_model=List[DriverLocationWithDetails])
 @router.get("/locations/map", response_model=List[DriverLocationWithDetails])
 def get_all_active_driver_locations(db: Session = Depends(get_db)):
     """Get all active driver locations for map view"""
