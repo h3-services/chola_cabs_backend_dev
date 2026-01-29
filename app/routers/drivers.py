@@ -79,30 +79,15 @@ def get_all_active_driver_locations(db: Session = Depends(get_db)):
         for loc in locations:
             # Safely get driver details if relationship exists
             driver_name = loc.driver.name if loc.driver else "Unknown"
-            phone = str(loc.driver.phone_number) if loc.driver else None
-            is_available = loc.driver.is_available if loc.driver else False
+            photo_url = loc.driver.photo_url if loc.driver else None
             
-            # Try to find vehicle if possible (optional)
-            # This might need another query or assume relationship is loaded?
-            # Driver model has vehicles relationship.
-            vehicle_type = None
-            if loc.driver and loc.driver.vehicles:
-                # Get the first approved vehicle or just first
-                vehicle = next((v for v in loc.driver.vehicles if v.vehicle_approved), None)
-                if not vehicle and loc.driver.vehicles:
-                    vehicle = loc.driver.vehicles[0]
-                if vehicle:
-                    vehicle_type = vehicle.vehicle_type
-
             result.append({
                 "driver_id": loc.driver_id,
                 "latitude": loc.latitude,
                 "longitude": loc.longitude,
                 "last_updated": loc.last_updated,
                 "driver_name": driver_name,
-                "phone_number": phone,
-                "is_available": is_available,
-                "vehicle_type": vehicle_type
+                "photo_url": photo_url
             })
             
         return result

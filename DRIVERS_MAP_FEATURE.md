@@ -8,25 +8,23 @@ Added an endpoint to fetch all active driver locations with essential details fo
 **GET** `/drivers/locations/map`
 
 ### Response
-Returns a list of driver locations with details:
+Returns a list of driver locations with simplified details:
 
 ```json
 [
   {
-    "driver_id": "uuid",
+    "driver_id": "uuid...",
     "latitude": 12.9716,
     "longitude": 77.5946,
     "last_updated": "2026-01-29T10:00:00",
-    "driver_name": "John Doe",
-    "phone_number": "9876543210",
-    "is_available": true,
-    "vehicle_type": "Sedan"
+    "driver_name": "Sanjeev",
+    "photo_url": "https://api.cholacabs.in/uploads/drivers/photos/..."
   }
 ]
 ```
 
 ## Code Changes
-- **Schemas**: Added `DriverLocationWithDetails`.
+- **Schemas**: Updated `DriverLocationWithDetails`.
 - **CRUD**: Added `get_all` to `CRUDDriverLocation` with eager loading.
 - **Router**: Added `/drivers/locations/map` endpoint.
 
