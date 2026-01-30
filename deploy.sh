@@ -17,7 +17,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 # Configuration
-APP_DIR="/var/www/cab_booking_api"
+APP_DIR="/var/www/projects/client_side/chola_cabs/backend/cab_app"
 APP_USER="root"
 VENV_DIR="$APP_DIR/venv"
 
@@ -64,9 +64,9 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/var/www/cab_booking_api
-Environment="PATH=/var/www/cab_booking_api/venv/bin"
-ExecStart=/var/www/cab_booking_api/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
+WorkingDirectory=/var/www/projects/client_side/chola_cabs/backend/cab_app
+Environment="PATH=/var/www/projects/client_side/chola_cabs/backend/cab_app/venv/bin"
+ExecStart=/var/www/projects/client_side/chola_cabs/backend/cab_app/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
 Restart=always
 RestartSec=3
 
@@ -78,7 +78,7 @@ echo -e "${YELLOW}Step 10: Configuring Nginx...${NC}"
 cat > /etc/nginx/sites-available/cab-api << 'EOF'
 server {
     listen 80;
-    server_name 72.62.196.30;
+    server_name 72.61.250.191;
 
     location /api {
         proxy_pass http://127.0.0.1:8000;
@@ -100,7 +100,7 @@ server {
     }
 
     location /uploads {
-        alias /var/www/cab_booking_api/uploads;
+        alias /var/www/projects/client_side/chola_cabs/backend/cab_app/uploads;
         autoindex off;
     }
 
@@ -140,7 +140,7 @@ echo -e "${YELLOW}Next Steps:${NC}"
 echo "1. Edit .env file: nano $APP_DIR/.env"
 echo "2. Restart service: systemctl restart cab-api"
 echo "3. Check logs: journalctl -u cab-api -f"
-echo "4. Test API: curl http://72.62.196.30/health"
-echo "5. Access Swagger: http://72.62.196.30/docs"
+echo "4. Test API: curl http://72.61.250.191/health"
+echo "5. Access Swagger: http://72.61.250.191/docs"
 echo ""
 echo -e "${GREEN}Your API is now running!${NC}"
