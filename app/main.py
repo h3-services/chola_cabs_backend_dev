@@ -41,20 +41,20 @@ except Exception as e:
     print(f"[ERROR] Error creating database tables: {e}")
 
 # Mount static files for uploads
-UPLOAD_DIR = "/root/chola_cabs_backend_dev/uploads"
+UPLOAD_DIR = "/var/www/projects/client_side/chola_cabs/backend/cab_app/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Include routers
-app.include_router(drivers.router, prefix="/api/v1")
-app.include_router(vehicles.router, prefix="/api/v1")
-app.include_router(trips.router, prefix="/api/v1")
-app.include_router(payments.router, prefix="/api/v1")
-app.include_router(wallet_transactions.router, prefix="/api/v1")
-app.include_router(tariff_config.router, prefix="/api/v1")
-app.include_router(raw_data.router, prefix="/api/v1")
-app.include_router(error_handling.router, prefix="/api/v1")
-app.include_router(trip_requests.router, prefix="/api/v1")
+app.include_router(drivers.router, prefix="/api")
+app.include_router(vehicles.router, prefix="/api")
+app.include_router(trips.router, prefix="/api")
+app.include_router(payments.router, prefix="/api")
+app.include_router(wallet_transactions.router, prefix="/api")
+app.include_router(tariff_config.router, prefix="/api")
+app.include_router(raw_data.router, prefix="/api")
+app.include_router(error_handling.router, prefix="/api")
+app.include_router(trip_requests.router, prefix="/api")
 app.include_router(admins.router)
 app.include_router(uploads.router)
 app.include_router(analytics.router)
@@ -63,7 +63,7 @@ app.include_router(analytics.router)
 def test_file_exists(filename: str):
     """Test if uploaded file exists"""
     import os
-    file_path = f"/root/chola_cabs_backend_dev/uploads/drivers/photos/{filename}"
+    file_path = f"/var/www/projects/client_side/chola_cabs/backend/cab_app/uploads/drivers/photos/{filename}"
     exists = os.path.exists(file_path)
     if exists:
         size = os.path.getsize(file_path)
@@ -102,7 +102,7 @@ def health_check():
         "version": os.getenv("APP_VERSION", "1.0.0")
     }
 
-@app.get("/api/v1/stats")
+@app.get("/api/stats")
 def get_api_stats():
     """Get basic API statistics"""
     try:
