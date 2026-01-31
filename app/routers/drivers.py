@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from app.api.deps import get_db
 from app.crud import crud_driver, crud_driver_location
-from app.schemas import DriverCreate, DriverUpdate, FCMTokenRequest, FCMTokenResponse, DriverLocationUpdate, DriverLocationResponse, DriverLocationWithDetails
+from app.schemas import DriverCreate, DriverUpdate, FCMTokenRequest, FCMTokenResponse, DriverLocationUpdate, DriverLocationResponse, DriverLocationWithDetails, CheckPhoneRequest, CheckPhoneResponse
 from app.core.logging import get_logger
 from app.core.constants import ErrorCode, KYCStatus
 import uuid
@@ -22,6 +22,43 @@ class ApprovalRequest(BaseModel):
 
 
 router = APIRouter(prefix="/drivers", tags=["drivers"])
+
+
+@router.post("/check-phone", response_model=CheckPhoneResponse)
+def check_phone_exists(
+    check_request: CheckPhoneRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Check if a driver phone number exists in the database.
+    Used by the mobile app to determine flow (Login vs Registration).
+    """
+    try:
+        # Check if phone exists using CRUD
+        driver = crud_driver.get_by_phone(db, phone_number=check_request.phone_number)
+        
+        if driver:
+            return CheckPhoneResponse(
+                exists=True,
+                status="existing_user",
+                message="User already exists",
+                driver_id=driver.driver_id,
+                name=driver.name
+            )
+        else:
+            return CheckPhoneResponse(
+                exists=False,
+                status="new_user",
+                message="User not found, proceed to registration"
+            )
+            
+    except Exception as e:
+        logger.error(f"Error checking phone number: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to check phone number"
+        )
+
 
 
 @router.get("/", response_model=None)

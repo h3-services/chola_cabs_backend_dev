@@ -35,6 +35,18 @@ class FCMTokenResponse(BaseModel):
     driver_id: str
     fcm_tokens: List[str]
 
+# Check Phone Schemas
+class CheckPhoneRequest(BaseModel):
+    phone_number: str
+
+class CheckPhoneResponse(BaseModel):
+    exists: bool
+    status: str  # "new_user", "existing_user"
+    message: str
+    driver_id: Optional[str] = None
+    name: Optional[str] = None
+
+
 # Driver Schemas
 class DriverBase(BaseModel):
     name: str
