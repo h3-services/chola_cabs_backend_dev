@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     DB_NAME: str = Field(..., env="DB_NAME")
     
     # File Storage
-    UPLOAD_DIR: str = Field(default="/root/chola_cabs_backend_dev/uploads", env="UPLOAD_DIR")
+    UPLOAD_DIR: str = Field(default="/var/www/projects/client_side/chola_cabs/backend/cab_app/uploads", env="UPLOAD_DIR")
     BASE_URL: str = Field(default="https://api.cholacabs.in", env="BASE_URL")
     
     # S3 Storage (Optional)

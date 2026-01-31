@@ -23,7 +23,7 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
 def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id: str = None, doc_type: str = None) -> str:
     """Save uploaded file and return URL"""
     # Use absolute path to ensure consistency
-    UPLOAD_DIR = "/root/chola_cabs_backend_dev/uploads"
+    UPLOAD_DIR = "/var/www/projects/client_side/chola_cabs/backend/cab_app/uploads"
     BASE_URL = "https://api.cholacabs.in/uploads"
     
     ext = os.path.splitext(file.filename)[1].lower()
