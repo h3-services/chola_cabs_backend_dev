@@ -55,9 +55,9 @@ app.include_router(tariff_config.router, prefix="/api")
 app.include_router(raw_data.router, prefix="/api")
 app.include_router(error_handling.router, prefix="/api")
 app.include_router(trip_requests.router, prefix="/api")
-app.include_router(admins.router)
-app.include_router(uploads.router)
-app.include_router(analytics.router)
+app.include_router(admins.router, prefix="/api")
+app.include_router(uploads.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
 
 @app.get("/test-file/{filename}")
 def test_file_exists(filename: str):

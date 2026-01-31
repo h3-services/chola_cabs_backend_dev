@@ -15,7 +15,7 @@ import pathlib
 env_path = pathlib.Path(__file__).parent.parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-router = APIRouter(prefix="/api/v1/uploads", tags=["uploads"])
+router = APIRouter(prefix="/uploads", tags=["uploads"])
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
