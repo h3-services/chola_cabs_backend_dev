@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.api.deps import get_db
-from app.crud import crud_driver, crud_driver_location
+from app.crud import crud_driver, crud_driver_location, crud_trip
 from app.schemas import DriverCreate, DriverUpdate, FCMTokenRequest, FCMTokenResponse, DriverLocationUpdate, DriverLocationResponse, DriverLocationWithDetails, CheckPhoneRequest, CheckPhoneResponse
 from app.core.logging import get_logger
 from app.core.constants import ErrorCode, KYCStatus
@@ -113,12 +113,21 @@ def get_all_active_driver_locations(db: Session = Depends(get_db)):
     try:
         locations = crud_driver_location.driver_location.get_all(db)
         
+        # Get active trips to determine driver status
+        active_trips = crud_trip.get_active_trips(db)
+        
+        # Create mapping of driver_id -> trip_status
+        driver_status_map = {trip.assigned_driver_id: trip.trip_status for trip in active_trips if trip.assigned_driver_id}
+        
         result = []
         for loc in locations:
             # Safely get driver details if relationship exists
             driver_name = loc.driver.name if loc.driver else "Unknown"
             phone_number = str(loc.driver.phone_number) if loc.driver and loc.driver.phone_number else None
             photo_url = loc.driver.photo_url if loc.driver else None
+            
+            # Determine status
+            status = driver_status_map.get(loc.driver_id, "AVAILABLE")
             
             result.append({
                 "driver_id": loc.driver_id,
@@ -127,7 +136,8 @@ def get_all_active_driver_locations(db: Session = Depends(get_db)):
                 "last_updated": loc.last_updated,
                 "driver_name": driver_name,
                 "phone_number": phone_number,
-                "photo_url": photo_url
+                "photo_url": photo_url,
+                "current_status": status
             })
             
         return result

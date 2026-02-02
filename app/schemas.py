@@ -104,6 +104,7 @@ class DriverLocationWithDetails(DriverLocationResponse):
     driver_name: Optional[str] = None
     phone_number: Optional[str] = None
     photo_url: Optional[str] = None
+    current_status: Optional[str] = "AVAILABLE"
     
     class Config:
         from_attributes = True
