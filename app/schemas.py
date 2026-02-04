@@ -74,6 +74,7 @@ class DriverResponse(DriverBase):
     kyc_verified: KYCStatus
     photo_url: Optional[str] = None
     aadhar_url: Optional[str] = None
+    police_verification_url: Optional[str] = None
     licence_url: Optional[str] = None
     wallet_balance: Decimal
     device_id: Optional[str] = None

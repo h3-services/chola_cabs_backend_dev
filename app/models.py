@@ -22,6 +22,7 @@ class Driver(Base):
     aadhar_number = Column(String(20), nullable=True)
     licence_url = Column(String(255), nullable=True)
     aadhar_url = Column(String(255), nullable=True)
+    police_verification_url = Column(String(255), nullable=True)
     licence_expiry = Column(Date, nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

@@ -83,6 +83,17 @@ async def upload_licence(driver_id: str, file: UploadFile = File(...), db: Sessi
     db.commit()
     return {"licence_url": url}
 
+@router.post("/driver/{driver_id}/police_verification")
+async def upload_police_verification(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(404, "Driver not found")
+    
+    url = save_file(file, "drivers/police_verification", "driver", driver_id, "police_verification")
+    driver.police_verification_url = url
+    db.commit()
+    return {"police_verification_url": url}
+
 @router.post("/vehicle/{vehicle_id}/rc")
 async def upload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
     vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
@@ -153,6 +164,17 @@ async def reupload_licence(driver_id: str, file: UploadFile = File(...), db: Ses
     driver.licence_url = url
     db.commit()
     return {"licence_url": url, "message": "Licence document re-uploaded successfully"}
+
+@router.put("/driver/{driver_id}/police_verification")
+async def reupload_police_verification(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(404, "Driver not found")
+    
+    url = save_file(file, "drivers/police_verification", "driver", driver_id, "police_verification")
+    driver.police_verification_url = url
+    db.commit()
+    return {"police_verification_url": url, "message": "Police verification document re-uploaded successfully"}
 
 @router.put("/vehicle/{vehicle_id}/rc")
 async def reupload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
