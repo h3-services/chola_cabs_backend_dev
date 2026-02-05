@@ -27,7 +27,7 @@ class Driver(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     device_id = Column(String(255), nullable=True)
-    fcm_tokens = Column(JSON, nullable=True)
+    fcm_token = Column(String(255), nullable=True)
     is_available = Column(Boolean, default=True)
     is_approved = Column(Boolean, default=False)
     errors = Column(JSON, nullable=True)

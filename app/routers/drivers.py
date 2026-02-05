@@ -91,7 +91,7 @@ def get_all_drivers(
                 "licence_expiry": driver.licence_expiry.isoformat() if driver.licence_expiry else None,
                 "wallet_balance": float(driver.wallet_balance) if driver.wallet_balance else 0.0,
                 "device_id": driver.device_id,
-                "fcm_tokens": driver.fcm_tokens,
+                "fcm_token": driver.fcm_token,
                 "is_available": driver.is_available,
                 "is_approved": driver.is_approved,
                 "errors": driver.errors,
@@ -179,7 +179,7 @@ def get_driver_by_id(driver_id: str, db: Session = Depends(get_db)):
             "licence_expiry": driver.licence_expiry.isoformat() if driver.licence_expiry else None,
             "wallet_balance": float(driver.wallet_balance) if driver.wallet_balance else 0.0,
             "device_id": driver.device_id,
-            "fcm_tokens": driver.fcm_tokens,
+            "fcm_token": driver.fcm_token,
             "is_available": driver.is_available,
             "is_approved": driver.is_approved,
             "errors": driver.errors,
@@ -474,10 +474,9 @@ def delete_driver(driver_id: str, db: Session = Depends(get_db)):
         )
 
 
-# FCM Token Management
 @router.post("/{driver_id}/fcm-token", response_model=FCMTokenResponse)
 def add_fcm_token(driver_id: str, token_request: FCMTokenRequest, db: Session = Depends(get_db)):
-    """Add or update FCM token for driver with FIFO limit - OPTIMIZED"""
+    """Update FCM token for driver (Single Token)"""
     try:
         # ✅ OPTIMIZED: Using CRUD
         driver = crud_driver.get(db, id=driver_id)
@@ -487,45 +486,31 @@ def add_fcm_token(driver_id: str, token_request: FCMTokenRequest, db: Session = 
                 detail="Driver not found"
             )
         
-        # Get existing tokens or initialize empty list
-        existing_tokens = driver.fcm_tokens or []
-        
-        # Remove token if already exists (to avoid duplicates)
-        if token_request.fcm_token in existing_tokens:
-            existing_tokens.remove(token_request.fcm_token)
-        
-        # Add new token to end (most recent)
-        existing_tokens.append(token_request.fcm_token)
-        
-        # FIFO: Keep only last 20 tokens (remove oldest)
-        MAX_TOKENS = 20
-        if len(existing_tokens) > MAX_TOKENS:
-            existing_tokens = existing_tokens[-MAX_TOKENS:]
-        
-        driver.fcm_tokens = existing_tokens
+        # Update single token
+        driver.fcm_token = token_request.fcm_token
         db.commit()
         db.refresh(driver)
         
-        logger.info(f"FCM token added for driver {driver_id}")
+        logger.info(f"FCM token updated for driver {driver_id}")
         
         return FCMTokenResponse(
-            message="FCM token added successfully",
+            message="FCM token updated successfully",
             driver_id=driver_id,
-            fcm_tokens=existing_tokens
+            fcm_token=driver.fcm_token
         )
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error adding FCM token: {e}", exc_info=True)
+        logger.error(f"Error updating FCM token: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to add FCM token"
+            detail="Failed to update FCM token"
         )
 
 
-@router.get("/{driver_id}/fcm-tokens")
-def get_fcm_tokens(driver_id: str, db: Session = Depends(get_db)):
-    """Get all FCM tokens for driver - OPTIMIZED"""
+@router.get("/{driver_id}/fcm-token")
+def get_fcm_token(driver_id: str, db: Session = Depends(get_db)):
+    """Get FCM token for driver"""
     try:
         # ✅ OPTIMIZED: Using CRUD
         driver = crud_driver.get(db, id=driver_id)
@@ -537,22 +522,22 @@ def get_fcm_tokens(driver_id: str, db: Session = Depends(get_db)):
         
         return {
             "driver_id": driver_id,
-            "fcm_tokens": driver.fcm_tokens or [],
-            "tokens_count": len(driver.fcm_tokens) if driver.fcm_tokens else 0
+            "fcm_token": driver.fcm_token,
+            "has_token": bool(driver.fcm_token)
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching FCM tokens: {e}", exc_info=True)
+        logger.error(f"Error fetching FCM token: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch FCM tokens"
+            detail="Failed to fetch FCM token"
         )
 
 
 @router.delete("/{driver_id}/fcm-token")
 def remove_fcm_token(driver_id: str, token_request: FCMTokenRequest, db: Session = Depends(get_db)):
-    """Remove specific FCM token for driver - OPTIMIZED"""
+    """Remove specific FCM token for driver if it matches"""
     try:
         # ✅ OPTIMIZED: Using CRUD
         driver = crud_driver.get(db, id=driver_id)
@@ -562,22 +547,18 @@ def remove_fcm_token(driver_id: str, token_request: FCMTokenRequest, db: Session
                 detail="Driver not found"
             )
         
-        existing_tokens = driver.fcm_tokens or []
-        
-        if token_request.fcm_token in existing_tokens:
-            existing_tokens.remove(token_request.fcm_token)
-            driver.fcm_tokens = existing_tokens
+        if driver.fcm_token == token_request.fcm_token:
+            driver.fcm_token = None
             db.commit()
             db.refresh(driver)
             message = "FCM token removed successfully"
             logger.info(f"FCM token removed for driver {driver_id}")
         else:
-            message = "FCM token not found"
+            message = "FCM token mismatch or not found"
         
         return {
             "message": message,
-            "driver_id": driver_id,
-            "tokens_count": len(existing_tokens)
+            "driver_id": driver_id
         }
     except HTTPException:
         raise
@@ -591,7 +572,7 @@ def remove_fcm_token(driver_id: str, token_request: FCMTokenRequest, db: Session
 
 @router.delete("/{driver_id}/fcm-tokens/all")
 def clear_all_fcm_tokens(driver_id: str, db: Session = Depends(get_db)):
-    """Clear all FCM tokens for driver - OPTIMIZED"""
+    """Clear FCM token for driver"""
     try:
         # ✅ OPTIMIZED: Using CRUD
         driver = crud_driver.get(db, id=driver_id)
@@ -601,16 +582,15 @@ def clear_all_fcm_tokens(driver_id: str, db: Session = Depends(get_db)):
                 detail="Driver not found"
             )
         
-        driver.fcm_tokens = []
+        driver.fcm_token = None
         db.commit()
         db.refresh(driver)
         
-        logger.info(f"All FCM tokens cleared for driver {driver_id}")
+        logger.info(f"FCM token cleared for driver {driver_id}")
         
         return {
-            "message": "All FCM tokens cleared successfully",
-            "driver_id": driver_id,
-            "tokens_count": 0
+            "message": "FCM token cleared successfully",
+            "driver_id": driver_id
         }
     except HTTPException:
         raise

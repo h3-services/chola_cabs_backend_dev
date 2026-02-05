@@ -33,7 +33,7 @@ class FCMTokenRequest(BaseModel):
 class FCMTokenResponse(BaseModel):
     message: str
     driver_id: str
-    fcm_tokens: List[str]
+    fcm_token: Optional[str] = None
 
 # Check Phone Schemas
 class CheckPhoneRequest(BaseModel):
@@ -78,7 +78,7 @@ class DriverResponse(DriverBase):
     licence_url: Optional[str] = None
     wallet_balance: Decimal
     device_id: Optional[str] = None
-    fcm_tokens: Optional[List[str]] = None
+    fcm_token: Optional[str] = None
     is_available: bool
     is_approved: bool
     errors: Optional[str] = None
