@@ -93,6 +93,18 @@ class Trip(Base):
     passenger_count = Column(Integer, default=1)
     pet_count = Column(Integer, default=0)
     luggage_count = Column(Integer, default=0)
+    
+    # Extra Charges
+    waiting_charges = Column(DECIMAL(10, 2), default=0.00)
+    inter_state_permit_charges = Column(DECIMAL(10, 2), default=0.00)
+    driver_allowance = Column(DECIMAL(10, 2), default=0.00)
+    luggage_cost = Column(DECIMAL(10, 2), default=0.00)
+    pet_cost = Column(DECIMAL(10, 2), default=0.00)
+    toll_charges = Column(DECIMAL(10, 2), default=0.00)
+    night_allowance = Column(DECIMAL(10, 2), default=0.00)
+    
+    total_amount = Column(DECIMAL(10, 2), default=0.00)
+    
     errors = Column(JSON, nullable=True)
     
     # Relationships

@@ -65,6 +65,14 @@ def get_all_trips(
                 "assigned_driver_id": trip.assigned_driver_id,
                 "distance_km": float(trip.distance_km) if trip.distance_km else None,
                 "fare": float(trip.fare) if trip.fare else None,
+                "waiting_charges": float(trip.waiting_charges) if trip.waiting_charges else 0.0,
+                "inter_state_permit_charges": float(trip.inter_state_permit_charges) if trip.inter_state_permit_charges else 0.0,
+                "driver_allowance": float(trip.driver_allowance) if trip.driver_allowance else 0.0,
+                "luggage_cost": float(trip.luggage_cost) if trip.luggage_cost else 0.0,
+                "pet_cost": float(trip.pet_cost) if trip.pet_cost else 0.0,
+                "toll_charges": float(trip.toll_charges) if trip.toll_charges else 0.0,
+                "night_allowance": float(trip.night_allowance) if trip.night_allowance else 0.0,
+                "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
                 "odo_start": trip.odo_start,
                 "odo_end": trip.odo_end,
                 "started_at": trip.started_at.isoformat() if trip.started_at else None,
@@ -114,6 +122,14 @@ def get_trip_details(trip_id: str, db: Session = Depends(get_db)):
             "assigned_driver_id": trip.assigned_driver_id,
             "distance_km": float(trip.distance_km) if trip.distance_km else None,
             "fare": float(trip.fare) if trip.fare else None,
+            "waiting_charges": float(trip.waiting_charges) if trip.waiting_charges else 0.0,
+            "inter_state_permit_charges": float(trip.inter_state_permit_charges) if trip.inter_state_permit_charges else 0.0,
+            "driver_allowance": float(trip.driver_allowance) if trip.driver_allowance else 0.0,
+            "luggage_cost": float(trip.luggage_cost) if trip.luggage_cost else 0.0,
+            "pet_cost": float(trip.pet_cost) if trip.pet_cost else 0.0,
+            "toll_charges": float(trip.toll_charges) if trip.toll_charges else 0.0,
+            "night_allowance": float(trip.night_allowance) if trip.night_allowance else 0.0,
+            "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
             "odo_start": trip.odo_start,
             "odo_end": trip.odo_end,
             "started_at": trip.started_at.isoformat() if trip.started_at else None,
@@ -200,6 +216,25 @@ def update_trip(
         
         # ✅ OPTIMIZED: Update using CRUD
         updated_trip = crud_trip.update(db, db_obj=trip, obj_in=trip_update)
+        
+        # Recalculate Total Amount if fare exists
+        # This ensures real-time updates when extras are modified
+        if updated_trip.fare is not None:
+             from decimal import Decimal, ROUND_HALF_UP
+             
+             extras = (
+                (updated_trip.waiting_charges or Decimal(0)) + 
+                (updated_trip.inter_state_permit_charges or Decimal(0)) + 
+                (updated_trip.driver_allowance or Decimal(0)) + 
+                (updated_trip.luggage_cost or Decimal(0)) + 
+                (updated_trip.pet_cost or Decimal(0)) + 
+                (updated_trip.toll_charges or Decimal(0)) + 
+                (updated_trip.night_allowance or Decimal(0))
+             )
+             updated_trip.total_amount = (updated_trip.fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+             db.commit()
+             db.refresh(updated_trip)
+
         logger.info(f"Trip updated: {trip_id}")
         
         return updated_trip
@@ -471,7 +506,18 @@ def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(ge
 
 
 @router.patch("/{trip_id}/odometer/end")
-def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db)):
+def update_odometer_end(
+    trip_id: str, 
+    odo_end: int, 
+    waiting_charges: Optional[Decimal] = None,
+    inter_state_permit_charges: Optional[Decimal] = None,
+    driver_allowance: Optional[Decimal] = None,
+    luggage_cost: Optional[Decimal] = None,
+    pet_cost: Optional[Decimal] = None,
+    toll_charges: Optional[Decimal] = None,
+    night_allowance: Optional[Decimal] = None,
+    db: Session = Depends(get_db)
+):
     """Update trip ending odometer reading and auto-complete trip with commission calculation"""
     try:
         # Import required models and constants locally for safety
@@ -503,6 +549,15 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
         trip.odo_end = odo_end
         trip.distance_km = Decimal(odo_end - trip.odo_start)
         
+        # Update extra charges if provided
+        if waiting_charges is not None: trip.waiting_charges = waiting_charges
+        if inter_state_permit_charges is not None: trip.inter_state_permit_charges = inter_state_permit_charges
+        if driver_allowance is not None: trip.driver_allowance = driver_allowance
+        if luggage_cost is not None: trip.luggage_cost = luggage_cost
+        if pet_cost is not None: trip.pet_cost = pet_cost
+        if toll_charges is not None: trip.toll_charges = toll_charges
+        if night_allowance is not None: trip.night_allowance = night_allowance
+        
         # Variables to track commission and earnings
         commission_amount = None
         driver_earnings = None
@@ -516,6 +571,20 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
             fare = crud_trip.calculate_fare(db, trip)
             if fare:
                 trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                
+                trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                
+                # Calculate Total Amount including extras
+                extras = (
+                    (trip.waiting_charges or Decimal(0)) + 
+                    (trip.inter_state_permit_charges or Decimal(0)) + 
+                    (trip.driver_allowance or Decimal(0)) + 
+                    (trip.luggage_cost or Decimal(0)) + 
+                    (trip.pet_cost or Decimal(0)) + 
+                    (trip.toll_charges or Decimal(0)) + 
+                    (trip.night_allowance or Decimal(0))
+                )
+                trip.total_amount = (trip.fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 
                 # ✅ OPTIMIZED: Get dynamic commission percentage from tariff config
                 commission_percent = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT))  # Default fallback
@@ -571,6 +640,7 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
             "odo_end": odo_end,
             "distance_km": float(trip.distance_km) if trip.distance_km else None,
             "fare": float(trip.fare) if trip.fare else None,
+            "total_amount": float(trip.total_amount) if trip.total_amount else None,
             "trip_status": trip.trip_status
         }
         
@@ -652,8 +722,20 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
         
         commission_difference = new_commission - old_commission
         
-        # Update trip fare
+        # Update trip fare and total amount
         trip.fare = new_fare
+        
+        # Recalculate Total Amount including extras
+        extras = (
+            (trip.waiting_charges or Decimal(0)) + 
+            (trip.inter_state_permit_charges or Decimal(0)) + 
+            (trip.driver_allowance or Decimal(0)) + 
+            (trip.luggage_cost or Decimal(0)) + 
+            (trip.pet_cost or Decimal(0)) + 
+            (trip.toll_charges or Decimal(0)) + 
+            (trip.night_allowance or Decimal(0))
+        )
+        trip.total_amount = (trip.fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         
         # Update wallet if a driver is assigned
         if trip.assigned_driver_id:

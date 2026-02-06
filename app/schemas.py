@@ -198,6 +198,16 @@ class TripUpdate(BaseModel):
     passenger_count: Optional[int] = None
     pet_count: Optional[int] = None
     luggage_count: Optional[int] = None
+    
+    # Extra Charges
+    waiting_charges: Optional[Decimal] = None
+    inter_state_permit_charges: Optional[Decimal] = None
+    driver_allowance: Optional[Decimal] = None
+    luggage_cost: Optional[Decimal] = None
+    pet_cost: Optional[Decimal] = None
+    toll_charges: Optional[Decimal] = None
+    night_allowance: Optional[Decimal] = None
+    total_amount: Optional[Decimal] = None
 
 class TripStatusUpdate(BaseModel):
     status: str
@@ -210,6 +220,17 @@ class TripResponse(TripBase):
     odo_start: Optional[int] = None
     odo_end: Optional[int] = None
     fare: Optional[Decimal] = None
+    
+    # Extra Charges
+    waiting_charges: Optional[Decimal] = 0.00
+    inter_state_permit_charges: Optional[Decimal] = 0.00
+    driver_allowance: Optional[Decimal] = 0.00
+    luggage_cost: Optional[Decimal] = 0.00
+    pet_cost: Optional[Decimal] = 0.00
+    toll_charges: Optional[Decimal] = 0.00
+    night_allowance: Optional[Decimal] = 0.00
+    total_amount: Optional[Decimal] = None
+    
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
     is_manual_assignment: bool

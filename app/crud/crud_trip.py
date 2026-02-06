@@ -197,14 +197,18 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         actual_distance = Decimal(trip.odo_end - trip.odo_start)
         
         # Apply Minimum KM Rules
+        # Use values from tariff config, fallback to defaults if needed
+        one_way_min = Decimal(tariff.one_way_min_km) if getattr(tariff, 'one_way_min_km', None) is not None else Decimal("130")
+        round_trip_min = Decimal(tariff.round_trip_min_km) if getattr(tariff, 'round_trip_min_km', None) is not None else Decimal("250")
+        
         if trip.trip_type == "One Way":
-            billable_distance = max(actual_distance, Decimal("130"))
+            billable_distance = max(actual_distance, one_way_min)
             fare = billable_distance * tariff.one_way_per_km
         elif trip.trip_type == "Round Trip":
-            billable_distance = max(actual_distance, Decimal("250"))
+            billable_distance = max(actual_distance, round_trip_min)
             fare = billable_distance * tariff.round_trip_per_km
         else:
-            billable_distance = max(actual_distance, Decimal("130"))
+            billable_distance = max(actual_distance, one_way_min)
             fare = billable_distance * tariff.one_way_per_km
             
         return fare
