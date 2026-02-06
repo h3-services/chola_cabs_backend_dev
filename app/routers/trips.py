@@ -670,6 +670,75 @@ def update_odometer_end(
         )
 
 
+@router.patch("/{trip_id}/extras")
+def update_trip_extras(
+    trip_id: str,
+    waiting_charges: Optional[Decimal] = None,
+    inter_state_permit_charges: Optional[Decimal] = None,
+    driver_allowance: Optional[Decimal] = None,
+    luggage_cost: Optional[Decimal] = None,
+    pet_cost: Optional[Decimal] = None,
+    toll_charges: Optional[Decimal] = None,
+    night_allowance: Optional[Decimal] = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Update extra charges for a trip (Driver Manual Entry)
+    Can be called before closing the trip.
+    """
+    try:
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
+
+        # Update fields if provided
+        if waiting_charges is not None: trip.waiting_charges = waiting_charges
+        if inter_state_permit_charges is not None: trip.inter_state_permit_charges = inter_state_permit_charges
+        if driver_allowance is not None: trip.driver_allowance = driver_allowance
+        if luggage_cost is not None: trip.luggage_cost = luggage_cost
+        if pet_cost is not None: trip.pet_cost = pet_cost
+        if toll_charges is not None: trip.toll_charges = toll_charges
+        if night_allowance is not None: trip.night_allowance = night_allowance
+        
+        # Recalculate Total Amount if fare exists
+        if trip.fare is not None:
+             extras = (
+                (trip.waiting_charges or Decimal(0)) + 
+                (trip.inter_state_permit_charges or Decimal(0)) + 
+                (trip.driver_allowance or Decimal(0)) + 
+                (trip.luggage_cost or Decimal(0)) + 
+                (trip.pet_cost or Decimal(0)) + 
+                (trip.toll_charges or Decimal(0)) + 
+                (trip.night_allowance or Decimal(0))
+             )
+             trip.total_amount = (trip.fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+        db.commit()
+        db.refresh(trip)
+        
+        logger.info(f"Trip extras updated: {trip_id}")
+        
+        return {
+            "message": "Extra charges updated successfully",
+            "trip_id": trip_id,
+            "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
+            "waiting_charges": float(trip.waiting_charges) if trip.waiting_charges else 0.0,
+            "toll_charges": float(trip.toll_charges) if trip.toll_charges else 0.0
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating trip extras: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update trip extras"
+        )
+
+
 @router.post("/{trip_id}/recalculate-fare")
 def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
     """Manually recalculate fare for a completed trip and update wallet"""
