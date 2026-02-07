@@ -573,8 +573,6 @@ def update_odometer_end(
             if fare:
                 trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 
-                trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                
                 # Calculate Total Amount including extras
                 extras = (
                     (trip.waiting_charges or Decimal(0)) + 
@@ -586,6 +584,8 @@ def update_odometer_end(
                     (trip.night_allowance or Decimal(0))
                 )
                 trip.total_amount = (trip.fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                
+                logger.info(f"Trip {trip_id} - Fare: ₹{trip.fare}, Extras: ₹{extras}, Total: ₹{trip.total_amount}")
                 
                 # ✅ OPTIMIZED: Get dynamic commission percentage from tariff config
                 commission_percent = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT))  # Default fallback
