@@ -4,7 +4,7 @@ Uses CRUD layer for production-ready performance
 """
 from typing import List, Optional
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
