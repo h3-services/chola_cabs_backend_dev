@@ -725,6 +725,7 @@ def update_trip_extras(
         return {
             "message": "Extra charges updated successfully",
             "trip_id": trip_id,
+            "fare": float(trip.fare) if trip.fare else 0.0,
             "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
             "waiting_charges": float(trip.waiting_charges) if trip.waiting_charges else 0.0,
             "inter_state_permit_charges": float(trip.inter_state_permit_charges) if trip.inter_state_permit_charges else 0.0,
