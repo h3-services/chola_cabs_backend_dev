@@ -703,18 +703,19 @@ def update_trip_extras(
         if toll_charges is not None: trip.toll_charges = toll_charges
         if night_allowance is not None: trip.night_allowance = night_allowance
         
-        # Recalculate Total Amount if fare exists
-        if trip.fare is not None:
-             extras = (
-                (trip.waiting_charges or Decimal(0)) + 
-                (trip.inter_state_permit_charges or Decimal(0)) + 
-                (trip.driver_allowance or Decimal(0)) + 
-                (trip.luggage_cost or Decimal(0)) + 
-                (trip.pet_cost or Decimal(0)) + 
-                (trip.toll_charges or Decimal(0)) + 
-                (trip.night_allowance or Decimal(0))
-             )
-             trip.total_amount = (trip.fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # Recalculate Total Amount (Treat fare as 0 if not set)
+        extras = (
+            (trip.waiting_charges or Decimal(0)) + 
+            (trip.inter_state_permit_charges or Decimal(0)) + 
+            (trip.driver_allowance or Decimal(0)) + 
+            (trip.luggage_cost or Decimal(0)) + 
+            (trip.pet_cost or Decimal(0)) + 
+            (trip.toll_charges or Decimal(0)) + 
+            (trip.night_allowance or Decimal(0))
+        )
+        
+        current_fare = trip.fare or Decimal(0)
+        trip.total_amount = (current_fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         db.commit()
         db.refresh(trip)
