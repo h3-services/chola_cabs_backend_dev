@@ -727,7 +727,12 @@ def update_trip_extras(
             "trip_id": trip_id,
             "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
             "waiting_charges": float(trip.waiting_charges) if trip.waiting_charges else 0.0,
-            "toll_charges": float(trip.toll_charges) if trip.toll_charges else 0.0
+            "inter_state_permit_charges": float(trip.inter_state_permit_charges) if trip.inter_state_permit_charges else 0.0,
+            "driver_allowance": float(trip.driver_allowance) if trip.driver_allowance else 0.0,
+            "luggage_cost": float(trip.luggage_cost) if trip.luggage_cost else 0.0,
+            "pet_cost": float(trip.pet_cost) if trip.pet_cost else 0.0,
+            "toll_charges": float(trip.toll_charges) if trip.toll_charges else 0.0,
+            "night_allowance": float(trip.night_allowance) if trip.night_allowance else 0.0
         }
     except HTTPException:
         raise
