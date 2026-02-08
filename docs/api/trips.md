@@ -6,70 +6,99 @@ The Trips API manages the complete lifecycle of cab booking trips, including cre
 
 ## Base URL
 ```
-/api/v1/trips
+/api/trips
 ```
 
 ## Endpoints
 
-### 1. Get All Trips
+### 1. Get Available Trips
 
-**GET** `/api/v1/trips`
+**GET** `/api/trips/available`
+
+Get all available trips (OPEN status, no driver assigned).
+
+**Response (200):**
+```json
+[
+  {
+    "trip_id": "uuid-string",
+    "customer_name": "John Doe",
+    "pickup_address": "Location A",
+    "drop_address": "Location B",
+    "trip_status": "OPEN",
+    ...
+  }
+]
+```
+
+### 2. Get All Trips
+
+**GET** `/api/trips/`
 
 Retrieve a paginated list of all trips with optional status filtering.
 
 **Query Parameters:**
 - `skip` (integer, optional): Number of records to skip (default: 0)
 - `limit` (integer, optional): Maximum number of records to return (default: 100)
-- `status_filter` (string, optional): Filter trips by status (`pending`, `assigned`, `started`, `completed`, `cancelled`)
+- `status_filter` (string, optional): Filter trips by status (`OPEN`, `ASSIGNED`, `STARTED`, `COMPLETED`, `CANCELLED`)
 
 **Response (200):**
 ```json
 [
   {
-    "trip_id": 1,
+    "trip_id": "uuid-string",
     "customer_name": "John Smith",
     "customer_phone": "9876543210",
     "pickup_address": "Mumbai Airport",
     "drop_address": "Bandra West",
     "trip_type": "one_way",
     "vehicle_type": "sedan",
-    "assigned_driver_id": 1,
-    "trip_status": "assigned",
+    "trip_status": "ASSIGNED",
+    "assigned_driver_id": "driver-uuid",
     "fare": 500.00,
+    "total_amount": 550.00,
     "created_at": "2023-12-01T10:00:00"
   }
 ]
 ```
 
-### 2. Get Trip by ID
+### 3. Get Trip by ID
 
-**GET** `/api/v1/trips/{trip_id}`
+**GET** `/api/trips/{trip_id}`
 
-Retrieve detailed information for a specific trip.
+Retrieve detailed information for a specific trip, including assigned driver details if available.
 
 **Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
+- `trip_id` (string, required): Unique identifier of the trip
 
 **Response (200):**
 ```json
 {
-  "trip_id": 1,
+  "trip_id": "uuid-string",
   "customer_name": "John Smith",
   "customer_phone": "9876543210",
   "pickup_address": "Mumbai Airport",
   "drop_address": "Bandra West",
   "trip_type": "one_way",
   "vehicle_type": "sedan",
-  "assigned_driver_id": 1,
-  "trip_status": "assigned",
+  "trip_status": "ASSIGNED",
+  "assigned_driver_id": "driver-uuid",
+  "distance_km": 15.5,
   "fare": 500.00,
-  "created_at": "2023-12-01T10:00:00"
+  "waiting_charges": 50.00,
+  "total_amount": 550.00,
+  "driver": {
+    "driver_id": "driver-uuid",
+    "name": "Driver Name",
+    "phone_number": "1234567890",
+    "is_available": false
+  }
 }
 ```
 
-### 3. Create New Trip
+### 4. Create New Trip
 
-**POST** `/api/v1/trips`
+**POST** `/api/trips/`
 
 Create a new trip booking.
 
@@ -80,302 +109,193 @@ Create a new trip booking.
   "customer_phone": "9876543211",
   "pickup_address": "Andheri East",
   "drop_address": "Powai",
-  "trip_type": "round_trip",
-  "vehicle_type": "suv",
+  "trip_type": "one_way",
+  "vehicle_type": "sedan",
   "passenger_count": 3,
-  "planned_start_at": "2023-12-01T14:00:00",
-  "planned_end_at": "2023-12-01T18:00:00"
+  "planned_start_at": "2023-12-01T14:00:00"
 }
 ```
 
 **Response (201):**
 ```json
 {
-  "trip_id": 2,
+  "trip_id": "uuid-string",
   "customer_name": "Jane Doe",
-  "trip_status": "pending",
-  "fare": 100.00,
+  "trip_status": "OPEN",
   "message": "Trip created successfully"
 }
 ```
 
-### 4. Update Trip
+### 5. Update Trip
 
-**PUT** `/api/v1/trips/{trip_id}`
+**PUT** `/api/trips/{trip_id}`
 
-Update trip information. Only provided fields will be updated.
+Update trip information.
 
 **Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
+- `trip_id` (string, required): Unique identifier of the trip
 
-**Request Body:**
+**Request Body (TripUpdate schema):**
 ```json
 {
-  "trip_status": "started",
-  "distance_km": 15.5,
+  "trip_status": "STARTED",
   "fare": 750.00,
-  "odo_start": 12500,
-  "odo_end": 12650,
-  "started_at": "2023-12-01T14:30:00"
+  "waiting_charges": 100.00
 }
 ```
 
 **Response (200):**
-```json
-{
-  "trip_id": 2,
-  "message": "Trip updated successfully"
-}
-```
+JSON object of updated trip.
 
-### 5. Assign Driver to Trip
+### 6. Assign Driver to Trip
 
-**PATCH** `/api/v1/trips/{trip_id}/assign-driver/{driver_id}`
+**PATCH** `/api/trips/{trip_id}/assign-driver/{driver_id}`
 
-Manually assign a driver to a trip.
+Manually assign a driver to a trip (Admin only).
 
 **Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
+- `trip_id` (string, required): Unique identifier of the trip
 - `driver_id` (string, required): Unique identifier of the driver
 
 **Response (200):**
 ```json
 {
-  "message": "Driver assigned to trip successfully",
-  "trip_id": 2,
-  "driver_id": "550e8400-e29b-41d4-a716-446655440000",
-  "driver_name": "John Doe",
-  "trip_status": "assigned"
+  "message": "Driver assigned successfully",
+  "trip_id": "trip-uuid",
+  "driver_id": "driver-uuid",
+  "trip_status": "ASSIGNED"
 }
 ```
 
-**Error Response (400):**
+### 7. Unassign Driver from Trip
+
+**PATCH** `/api/trips/{trip_id}/unassign`
+
+Unassign driver from trip and reset status to OPEN (Admin only).
+
+**Path Parameters:**
+- `trip_id` (string, required): Unique identifier of the trip
+
+**Response (200):**
 ```json
 {
-  "detail": "Driver is not available"
+  "message": "Driver unassigned successfully",
+  "trip_id": "trip-uuid",
+  "previous_driver_id": "driver-uuid",
+  "trip_status": "OPEN"
 }
 ```
 
-### 6. Update Trip Status
+### 8. Update Trip Status
 
-**PATCH** `/api/v1/trips/{trip_id}/status`
+**PATCH** `/api/trips/{trip_id}/status`
 
 Update the status of a trip.
 
 **Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
+- `trip_id` (string, required): Unique identifier of the trip
 
-**Request Body:**
-```json
-"completed"
-```
-
-**Valid Status Values:**
-- `pending`
-- `assigned`
-- `started`
-- `completed`
-- `cancelled`
+**Request Body (Query param in simplified endpoint, check implementation):**
+`new_status` (string, required) as query parameter.
 
 **Response (200):**
 ```json
 {
-  "message": "Trip status updated from assigned to completed",
-  "trip_id": 2,
-  "old_status": "assigned",
-  "new_status": "completed"
+  "message": "Trip status updated to COMPLETED",
+  "trip_id": "trip-uuid",
+  "trip_status": "COMPLETED",
+  "fare": 500.00
 }
 ```
 
-### 7. Create Driver Request
+### 9. Get Trips by Driver
 
-**POST** `/api/v1/trips/{trip_id}/driver-requests`
-
-Create a request for a driver to accept a trip.
-
-**Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
-
-**Request Body:**
-```json
-{
-  "driver_id": 1
-}
-```
-
-**Response (201):**
-```json
-{
-  "message": "Driver request created successfully",
-  "request_id": 1,
-  "trip_id": 2,
-  "driver_id": 1,
-  "status": "pending"
-}
-```
-
-### 8. Cancel Trip
-
-**PATCH** `/api/v1/trips/{trip_id}/cancel`
-
-Cancel a trip and update its status to cancelled.
-
-**Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
-
-**Response (200):**
-```json
-{
-  "message": "Trip cancelled successfully",
-  "trip_id": 2,
-  "old_status": "assigned",
-  "new_status": "cancelled"
-}
-```
-
-### 9. Start Trip
-
-**PATCH** `/api/v1/trips/{trip_id}/start`
-
-Start a trip and update its status to started.
-
-**Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
-
-**Request Body (Optional):**
-```json
-{
-  "odo_start": 12500,
-  "started_at": "2023-12-01T14:30:00"
-}
-```
-
-**Response (200):**
-```json
-{
-  "message": "Trip started successfully",
-  "trip_id": 2,
-  "old_status": "assigned",
-  "new_status": "started",
-  "started_at": "2023-12-01T14:30:00"
-}
-```
-
-### 10. Complete Trip
-
-**PATCH** `/api/v1/trips/{trip_id}/complete`
-
-Complete a trip and update its status to completed.
-
-**Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
-
-**Request Body (Optional):**
-```json
-{
-  "odo_end": 12650,
-  "distance_km": 15.5,
-  "final_fare": 750.00,
-  "completed_at": "2023-12-01T16:30:00"
-}
-```
-
-**Response (200):**
-```json
-{
-  "message": "Trip completed successfully",
-  "trip_id": 2,
-  "old_status": "started",
-  "new_status": "completed",
-  "final_fare": 750.00,
-  "completed_at": "2023-12-01T16:30:00"
-}
-```
-
-### 11. Get Trips by Driver
-
-**GET** `/api/v1/trips/driver/{driver_id}`
+**GET** `/api/trips/driver/{driver_id}`
 
 Retrieve all trips assigned to a specific driver.
 
 **Path Parameters:**
 - `driver_id` (string, required): Unique identifier of the driver
 
+### 10. Get Trip Statistics
+
+**GET** `/api/trips/statistics/dashboard`
+
+Get trip statistics for admin dashboard.
+
 **Response (200):**
-```json
-[
-  {
-    "trip_id": 1,
-    "customer_name": "John Smith",
-    "trip_status": "completed",
-    "fare": 500.00
-  }
-]
-```
+JSON object with statistics.
 
-### 12. Delete Trip
+### 11. Start Trip (Odometer)
 
-**DELETE** `/api/v1/trips/{trip_id}`
+**PATCH** `/api/trips/{trip_id}/odometer/start`
 
-Remove a trip from the system.
+Update trip starting odometer reading and set status to STARTED.
 
 **Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
+- `trip_id` (string, required): Unique identifier of the trip
+
+**Query Parameters:**
+- `odo_start` (integer, required): Starting odometer reading
 
 **Response (200):**
 ```json
 {
-  "message": "Trip deleted successfully",
-  "trip_id": 2
+  "message": "Odometer start updated",
+  "trip_id": "trip-uuid",
+  "odo_start": 12500,
+  "trip_status": "STARTED"
 }
 ```
 
-## Trip Types
+### 12. Complete Trip (Odometer End)
 
-- `one_way`: Single journey from pickup to drop location
-- `round_trip`: Return journey (pickup to drop and back to pickup)
+**PATCH** `/api/trips/{trip_id}/odometer/end`
 
-## Trip Status Flow
+Update trip ending odometer reading, calculate fare, and auto-complete trip.
 
-```
-pending → assigned → started → completed
-    ↓        ↓         ↓        ↓
- cancelled  cancelled  cancelled  (final)
-```
+**Path Parameters:**
+- `trip_id` (string, required): Unique identifier of the trip
 
-## Driver Assignment
+**Query Parameters:**
+- `odo_end` (integer, required): Ending odometer reading
+- `waiting_charges` (decimal, optional)
+- `inter_state_permit_charges` (decimal, optional)
+- `driver_allowance` (decimal, optional)
+- `luggage_cost` (decimal, optional)
+- `pet_cost` (decimal, optional)
+- `toll_charges` (decimal, optional)
+- `night_allowance` (decimal, optional)
 
-Drivers can be assigned to trips in two ways:
-
-1. **Manual Assignment**: Admin/system assigns driver via `/assign-driver/{driver_id}` endpoint
-2. **Driver Request System**: System creates requests that drivers can accept/reject
-
-## Automatic Actions
-
-When a trip status changes:
-- **Completed/Cancelled**: Assigned driver becomes available again
-- **Started**: Odometer readings and timestamps are recorded
-- **Assigned**: Driver availability is set to false
-
-## Error Responses
-
-**400 Bad Request:**
+**Response (200):**
 ```json
 {
-  "detail": "Invalid status. Valid statuses: pending, assigned, started, completed, cancelled"
+  "message": "Trip completed successfully",
+  "trip_id": "trip-uuid",
+  "odo_end": 12600,
+  "fare": 500.00,
+  "total_amount": 600.00,
+  "trip_status": "COMPLETED",
+  "commission_deducted": 50.00
 }
 ```
 
-**404 Not Found:**
+### 13. Recalculate Fare
+
+**POST** `/api/trips/{trip_id}/recalculate-fare`
+
+Manually recalculate fare for a completed trip and update wallet transactions.
+
+**Path Parameters:**
+- `trip_id` (string, required): Unique identifier of the trip
+
+**Response (200):**
 ```json
 {
-  "detail": "Trip not found"
+  "message": "Fare recalculated and wallet adjusted successfully",
+  "trip_id": "trip-uuid",
+  "old_fare": 450.00,
+  "new_fare": 500.00,
+  "net_adjustment": 5.00
 }
 ```
-
-## Notes
-
-- Trip fares are calculated based on tariff configurations
-- Distance tracking uses odometer readings when available
-- Driver availability is automatically managed based on trip status
-- Manual assignments bypass the normal driver request system

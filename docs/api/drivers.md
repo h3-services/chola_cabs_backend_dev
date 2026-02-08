@@ -2,18 +2,42 @@
 
 ## Overview
 
-The Drivers API provides comprehensive management of driver profiles, including registration, profile updates, availability tracking, and wallet management.
+The Drivers API provides comprehensive management of driver profiles, including registration, profile updates, availability tracking, wallet management, and real-time location.
 
 ## Base URL
 ```
-/api/v1/drivers
+/api/drivers
 ```
 
 ## Endpoints
 
-### 1. Get All Drivers
+### 1. Check Phone Exists
 
-**GET** `/api/v1/drivers`
+**POST** `/api/drivers/check-phone`
+
+Check if a driver phone number exists to determine if registration is needed.
+
+**Request Body:**
+```json
+{
+  "phone_number": "9876543210"
+}
+```
+
+**Response (200):**
+```json
+{
+  "exists": true,
+  "status": "existing_user",
+  "message": "User already exists",
+  "driver_id": "driver-uuid",
+  "name": "John Doe"
+}
+```
+
+### 2. Get All Drivers
+
+**GET** `/api/drivers/`
 
 Retrieve a paginated list of all drivers.
 
@@ -25,57 +49,52 @@ Retrieve a paginated list of all drivers.
 ```json
 [
   {
-    "driver_id": "550e8400-e29b-41d4-a716-446655440000",
+    "driver_id": "driver-uuid",
     "name": "John Doe",
     "phone_number": "9876543210",
     "email": "john@example.com",
-    "kyc_verified": true,
+    "kyc_verified": "approved",
     "primary_location": "Mumbai",
     "wallet_balance": 1500.50,
+    "fcm_token": "token...",
     "is_available": true,
-    "is_approved": true,
-    "created_at": "2023-12-01T10:00:00",
-    "updated_at": "2023-12-01T10:00:00"
+    "is_approved": true
   }
 ]
 ```
 
-### 2. Get Driver by ID
+### 3. Get Active Driver Locations (Map)
 
-**GET** `/api/v1/drivers/{driver_id}`
+**GET** `/api/drivers/locations`
+**GET** `/api/drivers/locations/map`
+
+Get all active driver locations for map view.
+
+**Response (200):**
+```json
+[
+  {
+    "driver_id": "driver-uuid",
+    "latitude": 19.0760,
+    "longitude": 72.8777,
+    "driver_name": "John Doe",
+    "current_status": "AVAILABLE"
+  }
+]
+```
+
+### 4. Get Driver by ID
+
+**GET** `/api/drivers/{driver_id}`
 
 Retrieve detailed information for a specific driver.
 
 **Path Parameters:**
 - `driver_id` (string, required): Unique identifier of the driver
 
-**Response (200):**
-```json
-{
-  "driver_id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "John Doe",
-  "phone_number": "9876543210",
-  "email": "john@example.com",
-  "kyc_verified": true,
-  "primary_location": "Mumbai",
-  "wallet_balance": 1500.50,
-  "is_available": true,
-  "is_approved": true,
-  "created_at": "2023-12-01T10:00:00",
-  "updated_at": "2023-12-01T10:00:00"
-}
-```
+### 5. Create New Driver
 
-**Error Response (404):**
-```json
-{
-  "detail": "Driver not found"
-}
-```
-
-### 3. Create New Driver
-
-**POST** `/api/v1/drivers`
+**POST** `/api/drivers/`
 
 Register a new driver in the system.
 
@@ -85,37 +104,24 @@ Register a new driver in the system.
   "name": "Jane Smith",
   "phone_number": "9876543211",
   "email": "jane@example.com",
-  "primary_location": "Delhi",
-  "licence_number": "DL123456789",
-  "aadhar_number": "123456789012",
-  "licence_expiry": "2025-12-31",
-  "device_id": "device_12345"
+  "primary_location": "Delhi"
 }
 ```
 
 **Response (201):**
 ```json
 {
-  "driver_id": "550e8400-e29b-41d4-a716-446655440001",
+  "driver_id": "driver-uuid",
   "name": "Jane Smith",
-  "phone_number": "9876543211",
-  "email": "jane@example.com",
   "message": "Driver created successfully"
 }
 ```
 
-**Error Response (400):**
-```json
-{
-  "detail": "Phone number already registered"
-}
-```
+### 6. Update Driver
 
-### 4. Update Driver
+**PUT** `/api/drivers/{driver_id}`
 
-**PUT** `/api/v1/drivers/{driver_id}`
-
-Update driver information. Only provided fields will be updated.
+Update driver information.
 
 **Path Parameters:**
 - `driver_id` (string, required): Unique identifier of the driver
@@ -124,116 +130,67 @@ Update driver information. Only provided fields will be updated.
 ```json
 {
   "name": "Jane Smith Updated",
-  "email": "jane.updated@example.com",
-  "primary_location": "Bangalore",
   "is_available": false
 }
 ```
 
-**Response (200):**
-```json
-{
-  "driver_id": "550e8400-e29b-41d4-a716-446655440001",
-  "name": "Jane Smith Updated",
-  "phone_number": "9876543211",
-  "email": "jane.updated@example.com",
-  "kyc_verified": true,
-  "primary_location": "Bangalore",
-  "wallet_balance": 0.0,
-  "is_available": false,
-  "is_approved": false,
-  "created_at": "2023-12-01T10:00:00",
-  "updated_at": "2023-12-01T11:00:00"
-}
-```
+### 7. Update Driver Availability
 
-### 5. Update Driver Availability
-
-**PATCH** `/api/v1/drivers/{driver_id}/availability`
+**PATCH** `/api/drivers/{driver_id}/availability`
 
 Update driver's availability status.
 
 **Path Parameters:**
 - `driver_id` (string, required): Unique identifier of the driver
 
-**Request Body:**
-```json
-true
-```
+**Query Parameters:**
+- `is_available` (boolean, required): True for available, False for unavailable
 
-**Response (200):**
-```json
-{
-  "message": "Driver availability updated to available",
-  "driver_id": "550e8400-e29b-41d4-a716-446655440000",
-  "is_available": true
-}
-```
+### 8. Update KYC Status
 
-### 6. Get Driver Wallet Balance
+**PATCH** `/api/drivers/{driver_id}/kyc-status`
 
-**GET** `/api/v1/drivers/{driver_id}/wallet-balance`
-
-Retrieve the current wallet balance for a driver.
+Admin endpoint to approve/reject driver KYC.
 
 **Path Parameters:**
 - `driver_id` (string, required): Unique identifier of the driver
 
-**Response (200):**
-```json
-{
-  "driver_id": "550e8400-e29b-41d4-a716-446655440000",
-  "wallet_balance": 1500.50,
-  "name": "John Doe"
-}
-```
+**Query Parameters:**
+- `kyc_status` (string, required): `pending`, `approved`, or `rejected`
 
-### 7. Delete Driver
+### 9. Approve Driver
 
-**DELETE** `/api/v1/drivers/{driver_id}`
+**PATCH** `/api/drivers/{driver_id}/approve`
+
+Admin endpoint to approve/disapprove driver.
+
+**Path Parameters:**
+- `driver_id` (string, required): Unique identifier of the driver
+
+**Query Parameters:**
+- `is_approved` (boolean, required): True to approve, False to disapprove
+
+### 10. Helper: Wallet Balance
+
+**GET** `/api/drivers/{driver_id}/wallet-balance`
+**PATCH** `/api/drivers/{driver_id}/wallet-balance` (Admin update)
+
+Manage driver wallet balance.
+
+### 11. Delete Driver
+
+**DELETE** `/api/drivers/{driver_id}`
 
 Remove a driver from the system.
 
-**Path Parameters:**
-- `driver_id` (string, required): Unique identifier of the driver
+### 12. FCM Token Management
 
-**Response (200):**
-```json
-{
-  "message": "Driver deleted successfully",
-  "driver_id": "550e8400-e29b-41d4-a716-446655440000"
-}
-```
+**POST** `/api/drivers/{driver_id}/fcm-token` (Add token)
+**GET** `/api/drivers/{driver_id}/fcm-token` (Get token)
+**DELETE** `/api/drivers/{driver_id}/fcm-token` (Remove specific token)
+**DELETE** `/api/drivers/{driver_id}/fcm-tokens/all` (Clear all tokens)
 
-## Error Responses
+### 13. Location Management
 
-All endpoints may return the following error responses:
-
-**400 Bad Request:**
-```json
-{
-  "detail": "Invalid input data"
-}
-```
-
-**404 Not Found:**
-```json
-{
-  "detail": "Driver not found"
-}
-```
-
-**500 Internal Server Error:**
-```json
-{
-  "detail": "Internal server error"
-}
-```
-
-## Notes
-
-- Driver IDs are UUID strings
-- Phone numbers must be unique across the system
-- Wallet balances are stored as decimal values
-- Driver approval is required before they can be assigned to trips
-- KYC verification status affects driver capabilities
+**POST** `/api/drivers/{driver_id}/location` (Update real-time location)
+**GET** `/api/drivers/{driver_id}/location` (Get real-time location)

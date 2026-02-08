@@ -6,14 +6,14 @@ The Payments API manages payment transactions for trips, including creation, upd
 
 ## Base URL
 ```
-/api/v1/payments
+/api/payments
 ```
 
 ## Endpoints
 
 ### 1. Get All Payments
 
-**GET** `/api/v1/payments`
+**GET** `/api/payments/`
 
 Retrieve a paginated list of all payment transactions.
 
@@ -25,213 +25,104 @@ Retrieve a paginated list of all payment transactions.
 ```json
 [
   {
-    "payment_id": 1,
-    "trip_id": 1,
+    "payment_id": "payment-uuid",
+    "driver_id": "driver-uuid",
     "amount": 500.00,
-    "payment_method": "cash",
-    "payment_status": "completed",
-    "transaction_reference": "TXN_123456789",
-    "payment_gateway": "razorpay",
-    "gateway_transaction_id": "rzp_txn_987654321",
-    "created_at": "2023-12-01T12:00:00",
-    "updated_at": "2023-12-01T12:05:00"
+    "transaction_type": "CREDIT",
+    "status": "COMPLETED",
+    ...
   }
 ]
 ```
 
 ### 2. Get Payment by ID
 
-**GET** `/api/v1/payments/{payment_id}`
+**GET** `/api/payments/{payment_id}`
 
 Retrieve detailed information for a specific payment.
 
 **Path Parameters:**
-- `payment_id` (integer, required): Unique identifier of the payment
-
-**Response (200):**
-```json
-{
-  "payment_id": 1,
-  "trip_id": 1,
-  "amount": 500.00,
-  "payment_method": "cash",
-  "payment_status": "completed",
-  "transaction_reference": "TXN_123456789",
-  "payment_gateway": "razorpay",
-  "gateway_transaction_id": "rzp_txn_987654321",
-  "created_at": "2023-12-01T12:00:00",
-  "updated_at": "2023-12-01T12:05:00"
-}
-```
+- `payment_id` (string, required): Unique identifier of the payment
 
 ### 3. Create Payment
 
-**POST** `/api/v1/payments`
+**POST** `/api/payments/`
 
-Create a new payment transaction for a trip.
+Create a new payment transaction.
 
 **Request Body:**
 ```json
 {
-  "trip_id": 1,
+  "driver_id": "driver-uuid",
   "amount": 750.50,
-  "payment_method": "upi",
-  "payment_status": "pending",
-  "transaction_reference": "UPI_987654321",
-  "payment_gateway": "phonepe",
-  "gateway_transaction_id": "pp_txn_123456789"
+  "transaction_type": "CREDIT",
+  "status": "PENDING",
+  "razorpay_payment_id": "pay_..."
 }
 ```
 
 **Response (201):**
 ```json
 {
-  "payment_id": 2,
-  "trip_id": 1,
+  "payment_id": "payment-uuid",
   "amount": 750.50,
-  "payment_method": "upi",
-  "payment_status": "pending",
-  "transaction_reference": "UPI_987654321",
-  "payment_gateway": "phonepe",
-  "gateway_transaction_id": "pp_txn_123456789",
-  "created_at": "2023-12-01T13:00:00",
-  "updated_at": null
+  "status": "PENDING",
+  ...
 }
 ```
 
 ### 4. Update Payment
 
-**PUT** `/api/v1/payments/{payment_id}`
+**PUT** `/api/payments/{payment_id}`
 
-Update payment information. Only provided fields will be updated.
+Update payment information.
 
 **Path Parameters:**
-- `payment_id` (integer, required): Unique identifier of the payment
-
-**Request Body:**
-```json
-{
-  "payment_status": "completed",
-  "gateway_transaction_id": "pp_txn_123456789_updated",
-  "gateway_response": "{\"status\":\"success\",\"txn_id\":\"pp_txn_123456789\"}"
-}
-```
-
-**Response (200):**
-```json
-{
-  "payment_id": 2,
-  "trip_id": 1,
-  "amount": 750.50,
-  "payment_method": "upi",
-  "payment_status": "completed",
-  "transaction_reference": "UPI_987654321",
-  "payment_gateway": "phonepe",
-  "gateway_transaction_id": "pp_txn_123456789_updated",
-  "created_at": "2023-12-01T13:00:00",
-  "updated_at": "2023-12-01T13:05:00"
-}
-```
+- `payment_id` (string, required): Unique identifier of the payment
 
 ### 5. Delete Payment
 
-**DELETE** `/api/v1/payments/{payment_id}`
+**DELETE** `/api/payments/{payment_id}`
 
 Remove a payment transaction from the system.
 
 **Path Parameters:**
-- `payment_id` (integer, required): Unique identifier of the payment
+- `payment_id` (string, required): Unique identifier of the payment
 
-**Response (200):**
-```json
-{
-  "message": "Payment deleted successfully",
-  "payment_id": 2
-}
-```
+### 6. Get Payments by Driver
 
-### 6. Get Payments by Trip
+**GET** `/api/payments/driver/{driver_id}`
 
-**GET** `/api/v1/payments/trip/{trip_id}`
-
-Retrieve all payments associated with a specific trip.
+Retrieve all payments associated with a specific driver.
 
 **Path Parameters:**
-- `trip_id` (integer, required): Unique identifier of the trip
+- `driver_id` (string, required): Unique identifier of the driver
 
 **Response (200):**
 ```json
 [
   {
-    "payment_id": 1,
-    "trip_id": 1,
+    "payment_id": "payment-uuid",
     "amount": 500.00,
-    "payment_method": "cash",
-    "payment_status": "completed",
-    "transaction_reference": "TXN_123456789",
-    "payment_gateway": "razorpay",
-    "gateway_transaction_id": "rzp_txn_987654321",
-    "created_at": "2023-12-01T12:00:00",
-    "updated_at": "2023-12-01T12:05:00"
+    ...
   }
 ]
 ```
 
-## Payment Methods
+### 7. Get Payment by Razorpay ID
 
-Supported payment methods:
-- `cash`: Cash payment
-- `upi`: UPI (Unified Payments Interface)
-- `card`: Credit/Debit card
-- `wallet`: Digital wallet
-- `bank_transfer`: Bank transfer
+**GET** `/api/payments/razorpay/{razorpay_payment_id}`
 
-## Payment Status
+Get payment by Razorpay payment ID.
 
-Payment status values:
-- `pending`: Payment initiated but not completed
-- `processing`: Payment is being processed
-- `completed`: Payment successfully completed
-- `failed`: Payment failed
-- `refunded`: Payment has been refunded
-- `cancelled`: Payment was cancelled
+**Path Parameters:**
+- `razorpay_payment_id` (string, required): Unique identifier of the razorpay payment
 
-## Payment Gateways
-
-Supported payment gateways:
-- `razorpay`: Razorpay payment gateway
-- `phonepe`: PhonePe payment gateway
-- `paytm`: Paytm payment gateway
-- `gpay`: Google Pay
-- `cashfree`: Cashfree payment gateway
-
-## Error Responses
-
-**400 Bad Request:**
+**Response (200):**
 ```json
 {
-  "detail": "Invalid payment method"
+  "payment_id": "payment-uuid",
+  "razorpay_payment_id": "pay_...",
+  ...
 }
 ```
-
-**404 Not Found:**
-```json
-{
-  "detail": "Payment not found"
-}
-```
-
-**404 Not Found (Trip):**
-```json
-{
-  "detail": "Trip not found"
-}
-```
-
-## Notes
-
-- Each trip can have multiple payment transactions (partial payments, refunds, etc.)
-- Payment amounts are stored as decimal values for precision
-- Gateway transaction IDs and responses are stored for reconciliation
-- Transaction references should be unique for tracking purposes
-- Payment status updates should be handled by webhooks from payment gateways
