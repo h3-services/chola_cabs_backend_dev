@@ -219,6 +219,8 @@ class TripResponse(TripBase):
     distance_km: Optional[Decimal] = None
     odo_start: Optional[int] = None
     odo_end: Optional[int] = None
+    odo_start_url: Optional[str] = None
+    odo_end_url: Optional[str] = None
     fare: Optional[Decimal] = None
     
     # Extra Charges

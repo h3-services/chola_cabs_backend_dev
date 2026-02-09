@@ -79,9 +79,11 @@ class Trip(Base):
     vehicle_type = Column(String(50), nullable=True)
     assigned_driver_id = Column(String(36), ForeignKey("drivers.driver_id"), nullable=True)
     trip_status = Column(String(50), default="OPEN")  # OPEN, ASSIGNED, STARTED, COMPLETED, CANCELLED
-    distance_km = Column(DECIMAL(8, 2), nullable=True)
+    distance_km = Column(DECIMAL(10, 2), nullable=True)
     odo_start = Column(Integer, nullable=True)
     odo_end = Column(Integer, nullable=True)
+    odo_start_url = Column(String(255), nullable=True)
+    odo_end_url = Column(String(255), nullable=True)
     fare = Column(DECIMAL(10, 2), nullable=True)
     started_at = Column(DateTime, nullable=True)
     ended_at = Column(DateTime, nullable=True)

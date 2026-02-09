@@ -1,4 +1,4 @@
-"""
+"
 File upload router for KYC documents and photos
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
@@ -8,7 +8,7 @@ import os
 import shutil
 from dotenv import load_dotenv
 from app.database import get_db
-from app.models import Driver, Vehicle
+from app.models import Driver, Vehicle, Trip
 import pathlib
 
 # Load environment variables with absolute path
@@ -211,3 +211,25 @@ async def reupload_vehicle_photo(vehicle_id: str, position: str, file: UploadFil
     setattr(vehicle, f"vehicle_{position}_url", url)
     db.commit()
     return {f"vehicle_{position}_url": url, "message": f"Vehicle {position} photo re-uploaded successfully"}
+
+@router.post("/trip/{trip_id}/odo_start")
+async def upload_trip_odo_start(trip_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    if not trip:
+        raise HTTPException(404, "Trip not found")
+    
+    url = save_file(file, "trips/odo_start", "trip", trip_id, "odo_start")
+    trip.odo_start_url = url
+    db.commit()
+    return {"odo_start_url": url, "message": "Trip start odometer photo uploaded successfully"}
+
+@router.post("/trip/{trip_id}/odo_end")
+async def upload_trip_odo_end(trip_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    if not trip:
+        raise HTTPException(404, "Trip not found")
+    
+    url = save_file(file, "trips/odo_end", "trip", trip_id, "odo_end")
+    trip.odo_end_url = url
+    db.commit()
+    return {"odo_end_url": url, "message": "Trip end odometer photo uploaded successfully"}
