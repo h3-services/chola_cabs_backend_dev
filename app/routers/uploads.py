@@ -1,4 +1,4 @@
-"
+"""
 File upload router for KYC documents and photos
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
