@@ -10,6 +10,8 @@ from dotenv import load_dotenv
 from app.database import get_db
 from app.models import Driver, Vehicle, Trip
 import pathlib
+from PIL import Image
+import io
 
 # Load environment variables with absolute path
 env_path = pathlib.Path(__file__).parent.parent.parent / '.env'
@@ -45,8 +47,47 @@ def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id:
     os.makedirs(folder_path, exist_ok=True)
     
     file_path = os.path.join(folder_path, filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    
+    # Check file size to decide on compression
+    # Move cursor to end to get size
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    
+    # Threshold: 500KB (500 * 1024 bytes)
+    # If smaller than 500KB, save directly to save CPU
+    if file_size <= 500 * 1024:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return f"{BASE_URL}/{folder}/{filename}"
+
+    # Compress and save image if larger than 500KB
+    if ext in [".jpg", ".jpeg", ".png"]:
+        try:
+            # Open image using Pillow
+            image = Image.open(file.file)
+            
+            # Convert to RGB (in case of PNG with transparency)
+            if image.mode in ("RGBA", "P"):
+                image = image.convert("RGB")
+            
+            # Resize if dimension > 1024px to reduce memory usage and disk space
+            max_size = (1024, 1024)
+            image.thumbnail(max_size, Image.Resampling.LANCZOS)
+            
+            # Save compressed JPEG
+            image.save(file_path, "JPEG", optimize=True, quality=70) # Force JPEG for consistency and size
+            
+        except Exception as e:
+            # Fallback to normal save if PIL fails or it's not a valid image
+            print(f"Compression failed: {e}")
+            file.file.seek(0)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+    else:
+        # Save non-image files normally (e.g. PDF)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
     
     return f"{BASE_URL}/{folder}/{filename}"
 
