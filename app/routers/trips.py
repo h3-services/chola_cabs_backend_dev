@@ -222,23 +222,11 @@ def update_trip(
         # ✅ OPTIMIZED: Update using CRUD
         updated_trip = crud_trip.update(db, db_obj=trip, obj_in=trip_update)
         
-        # Recalculate Total Amount if fare exists
-        # This ensures real-time updates when extras are modified
-        if updated_trip.fare is not None:
-             from decimal import Decimal, ROUND_HALF_UP
-             
-             extras = (
-                (updated_trip.waiting_charges or Decimal(0)) + 
-                (updated_trip.inter_state_permit_charges or Decimal(0)) + 
-                (updated_trip.driver_allowance or Decimal(0)) + 
-                (updated_trip.luggage_cost or Decimal(0)) + 
-                (updated_trip.pet_cost or Decimal(0)) + 
-                (updated_trip.toll_charges or Decimal(0)) + 
-                (updated_trip.night_allowance or Decimal(0))
-             )
-             updated_trip.total_amount = (updated_trip.fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-             db.commit()
-             db.refresh(updated_trip)
+        # Recalculate Total Amount
+        # This ensures real-time updates when extras or fare are modified
+        updated_trip.recalculate_total_amount()
+        db.commit()
+        db.refresh(updated_trip)
 
         logger.info(f"Trip updated: {trip_id}")
         
@@ -577,19 +565,10 @@ def update_odometer_end(
             if fare:
                 trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 
-                # Calculate Total Amount including extras
-                extras = (
-                    (trip.waiting_charges or Decimal(0)) + 
-                    (trip.inter_state_permit_charges or Decimal(0)) + 
-                    (trip.driver_allowance or Decimal(0)) + 
-                    (trip.luggage_cost or Decimal(0)) + 
-                    (trip.pet_cost or Decimal(0)) + 
-                    (trip.toll_charges or Decimal(0)) + 
-                    (trip.night_allowance or Decimal(0))
-                )
-                trip.total_amount = (trip.fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                # Recalculate Total Amount including extras
+                trip.recalculate_total_amount()
                 
-                logger.info(f"Trip {trip_id} - Fare: ₹{trip.fare}, Extras: ₹{extras}, Total: ₹{trip.total_amount}")
+                logger.info(f"Trip {trip_id} - Fare: ₹{trip.fare}, Total: ₹{trip.total_amount}")
                 
                 # ✅ OPTIMIZED: Get dynamic commission percentage from tariff config
                 commission_percent = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT))  # Default fallback
@@ -732,16 +711,7 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
         trip.fare = new_fare
         
         # Recalculate Total Amount including extras
-        extras = (
-            (trip.waiting_charges or Decimal(0)) + 
-            (trip.inter_state_permit_charges or Decimal(0)) + 
-            (trip.driver_allowance or Decimal(0)) + 
-            (trip.luggage_cost or Decimal(0)) + 
-            (trip.pet_cost or Decimal(0)) + 
-            (trip.toll_charges or Decimal(0)) + 
-            (trip.night_allowance or Decimal(0))
-        )
-        trip.total_amount = (trip.fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        trip.recalculate_total_amount()
         
         # Update wallet if a driver is assigned
         if trip.assigned_driver_id:
@@ -773,7 +743,7 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
             "trip_id": trip_id,
             "old_fare": float(old_fare),
             "new_fare": float(new_fare),
-            "net_adjustment": float(net_difference)
+            "commission_adjustment": float(commission_difference)
         }
     except HTTPException:
         raise

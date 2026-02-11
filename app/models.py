@@ -109,6 +109,27 @@ class Trip(Base):
     
     errors = Column(JSON, nullable=True)
     
+    def recalculate_total_amount(self):
+        """Recalculate total_amount based on fare and all extra charges"""
+        from decimal import Decimal, ROUND_HALF_UP
+        
+        # Base fare
+        base_fare = self.fare or Decimal("0.00")
+        
+        # Sum of all extra charges
+        extras = (
+            (self.waiting_charges or Decimal("0.00")) +
+            (self.inter_state_permit_charges or Decimal("0.00")) +
+            (self.driver_allowance or Decimal("0.00")) +
+            (self.luggage_cost or Decimal("0.00")) +
+            (self.pet_cost or Decimal("0.00")) +
+            (self.toll_charges or Decimal("0.00")) +
+            (self.night_allowance or Decimal("0.00"))
+        )
+        
+        self.total_amount = (base_fare + extras).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        return self.total_amount
+
     # Relationships
     assigned_driver = relationship("Driver", back_populates="trips")
     trip_requests = relationship("TripDriverRequest", back_populates="trip")

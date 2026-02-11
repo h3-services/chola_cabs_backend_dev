@@ -273,6 +273,9 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                         
                         # Update driver wallet balance (Minus commission only)
                         driver.wallet_balance = (driver.wallet_balance or Decimal(0)) - commission_amount
+                
+                # Recalculate total amount including extras
+                trip.recalculate_total_amount()
             
             db.commit()
             db.refresh(trip)
