@@ -555,67 +555,72 @@ def update_odometer_end(
         commission_amount = None
         driver_earnings = None
         
-        # Auto-complete trip
+        # Track if we are completing the trip just now
+        is_first_completion = False
         if trip.trip_status != TripStatus.COMPLETED:
             trip.trip_status = TripStatus.COMPLETED
             trip.ended_at = datetime.utcnow()
+            is_first_completion = True
             
-            # ✅ Calculate fare using CRUD (distance × per_km_rate only)
-            fare = crud_trip.calculate_fare(db, trip)
-            if fare:
-                trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        # ✅ ALWAYS Calculate/Recalculate fare using CRUD (distance × per_km_rate only)
+        # This ensures fare is updated if odometer changed, even if already completed
+        fare = crud_trip.calculate_fare(db, trip)
+
+        if fare:
+            trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            
+            # Recalculate Total Amount including extras
+            trip.recalculate_total_amount()
+            
+            logger.info(f"Trip {trip_id} - Fare: ₹{trip.fare}, Total: ₹{trip.total_amount}")
+            
+            # ✅ OPTIMIZED: Get dynamic commission percentage from tariff config
+            commission_percent = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT))  # Default fallback
+            
+            # Fetch tariff config for this vehicle type
+            from app.models import VehicleTariffConfig
+            tariff_config = db.query(VehicleTariffConfig).filter(
+                VehicleTariffConfig.vehicle_type == trip.vehicle_type,
+                VehicleTariffConfig.is_active == True
+            ).first()
+            
+            if tariff_config and tariff_config.driver_commission is not None:
+                commission_percent = tariff_config.driver_commission
+            
+            # Calculate commission amount
+            comm_pct = commission_percent / Decimal("100")
+            commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            
+            logger.info(f"Trip {trip_id}: Fare=₹{trip.fare}, Commission=₹{commission_amount}")
+            
+            # ✅ Create wallet transactions and update driver balance
+            # Only if this is the FIRST time we are completing to avoid double charging
+            if is_first_completion and trip.assigned_driver_id:
+                # Get driver
+                driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
                 
-                # Recalculate Total Amount including extras
-                trip.recalculate_total_amount()
-                
-                logger.info(f"Trip {trip_id} - Fare: ₹{trip.fare}, Total: ₹{trip.total_amount}")
-                
-                # ✅ OPTIMIZED: Get dynamic commission percentage from tariff config
-                commission_percent = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT))  # Default fallback
-                
-                # Fetch tariff config for this vehicle type
-                from app.models import VehicleTariffConfig
-                tariff_config = db.query(VehicleTariffConfig).filter(
-                    VehicleTariffConfig.vehicle_type == trip.vehicle_type,
-                    VehicleTariffConfig.is_active == True
-                ).first()
-                
-                if tariff_config and tariff_config.driver_commission is not None:
-                    commission_percent = tariff_config.driver_commission
-                
-                # Calculate commission amount
-                comm_pct = commission_percent / Decimal("100")
-                commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                
-                logger.info(f"Trip {trip_id}: Fare=₹{trip.fare}, Commission=₹{commission_amount}")
-                
-                # ✅ Create wallet transactions and update driver balance
-                if trip.assigned_driver_id:
-                    # Get driver
-                    driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+                if driver:
+                    # Create DEBIT transaction for commission (minus from balance)
+                    wallet_commission = WalletTransaction(
+                        wallet_id=str(uuid.uuid4()),
+                        driver_id=trip.assigned_driver_id,
+                        trip_id=trip.trip_id,
+                        amount=commission_amount,
+                        transaction_type="DEBIT"
+                    )
+                    db.add(wallet_commission)
                     
-                    if driver:
-                        # Create DEBIT transaction for commission (minus from balance)
-                        wallet_commission = WalletTransaction(
-                            wallet_id=str(uuid.uuid4()),
-                            driver_id=trip.assigned_driver_id,
-                            trip_id=trip.trip_id,
-                            amount=commission_amount,
-                            transaction_type="DEBIT"
-                        )
-                        db.add(wallet_commission)
-                        
-                        # Update driver wallet balance (Minus commission only)
-                        driver.wallet_balance = (driver.wallet_balance or Decimal(0)) - commission_amount
-                        
-                        logger.info(f"Driver {trip.assigned_driver_id} wallet updated: -₹{commission_amount} (Commission deducted)")
-                    else:
-                        logger.warning(f"Driver {trip.assigned_driver_id} not found for wallet update")
-        
+                    # Update driver wallet balance (Minus commission only)
+                    driver.wallet_balance = (driver.wallet_balance or Decimal(0)) - commission_amount
+                    
+                    logger.info(f"Driver {trip.assigned_driver_id} wallet updated: -₹{commission_amount} (Commission deducted)")
+                else:
+                    logger.warning(f"Driver {trip.assigned_driver_id} not found for wallet update")
+
         db.commit()
         db.refresh(trip)
         
-        logger.info(f"Trip {trip_id} completed with fare {trip.fare}")
+        logger.info(f"Trip {trip_id} completed/updated with fare {trip.fare}")
         
         # Build response with commission details
         response = {

@@ -31,39 +31,7 @@ def get_wallet_transaction_details(transaction_id: str, db: Session = Depends(ge
         )
     return transaction
 
-@router.post("/", response_model=WalletTransactionResponse, status_code=status.HTTP_201_CREATED)
-def create_wallet_transaction(transaction: WalletTransactionCreate, db: Session = Depends(get_db)):
-    """Create a new wallet transaction"""
-    # Check if driver exists
-    driver = db.query(Driver).filter(Driver.driver_id == transaction.driver_id).first()
-    if not driver:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Driver not found"
-        )
-    
-    # Generate UUID for wallet_id
-    import uuid
-    transaction_data = transaction.dict()
-    transaction_data['wallet_id'] = str(uuid.uuid4())
-    
-    db_transaction = WalletTransaction(**transaction_data)
-    
-    # Update driver wallet balance
-    if transaction.transaction_type == "credit":
-        driver.wallet_balance += transaction.amount
-    else:  # debit
-        if driver.wallet_balance < transaction.amount:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Insufficient wallet balance"
-            )
-        driver.wallet_balance -= transaction.amount
-    
-    db.add(db_transaction)
-    db.commit()
-    db.refresh(db_transaction)
-    return db_transaction
+ 
 
 @router.put("/{transaction_id}", response_model=WalletTransactionResponse)
 def update_wallet_transaction(
