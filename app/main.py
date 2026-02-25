@@ -21,7 +21,8 @@ app = FastAPI(
     description="Production-ready Cab Booking Management System",
     docs_url="/docs",
     redoc_url="/redoc",
-    default_response_class=ORJSONResponse
+    default_response_class=ORJSONResponse,
+    redirect_slashes=True
 )
 
 # Add CORS middleware
@@ -45,19 +46,21 @@ UPLOAD_DIR = "/root/chola_cabs_backend_dev/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-# Include routers
-app.include_router(drivers.router, prefix="/api/v1")
-app.include_router(vehicles.router, prefix="/api/v1")
-app.include_router(trips.router, prefix="/api/v1")
-app.include_router(payments.router, prefix="/api/v1")
-app.include_router(wallet_transactions.router, prefix="/api/v1")
-app.include_router(tariff_config.router, prefix="/api/v1")
-app.include_router(raw_data.router, prefix="/api/v1")
-app.include_router(error_handling.router, prefix="/api/v1")
-app.include_router(trip_requests.router, prefix="/api/v1")
+# Include routers - Supporting both /api and /api/v1 for compatibility
+for prefix in ["/api", "/api/v1"]:
+    app.include_router(drivers.router, prefix=prefix)
+    app.include_router(vehicles.router, prefix=prefix)
+    app.include_router(trips.router, prefix=prefix)
+    app.include_router(payments.router, prefix=prefix)
+    app.include_router(wallet_transactions.router, prefix=prefix)
+    app.include_router(tariff_config.router, prefix=prefix)
+    app.include_router(raw_data.router, prefix=prefix)
+    app.include_router(error_handling.router, prefix=prefix)
+    app.include_router(trip_requests.router, prefix=prefix)
+    app.include_router(analytics.router, prefix=prefix)
+
 app.include_router(admins.router)
 app.include_router(uploads.router)
-app.include_router(analytics.router)
 
 @app.get("/test-file/{filename}")
 def test_file_exists(filename: str):

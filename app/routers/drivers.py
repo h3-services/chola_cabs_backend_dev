@@ -540,6 +540,22 @@ def clear_all_fcm_tokens(driver_id: str, db: Session = Depends(get_db)):
         )
 
 
+@router.patch("/{driver_id}/device-id")
+def update_driver_device_id(driver_id: str, payload: dict, db: Session = Depends(get_db)):
+    """Update driver's device ID for push notifications and security"""
+    device_id = payload.get("device_id")
+    if not device_id:
+        raise HTTPException(status_code=400, detail="device_id is required")
+    
+    driver = crud_driver.get(db, id=driver_id)
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    
+    driver.device_id = device_id
+    db.commit()
+    return {"message": "Device ID updated successfully", "driver_id": driver_id, "device_id": device_id}
+
+
 @router.patch("/{driver_id}/clear-errors")
 def clear_driver_errors(driver_id: str, db: Session = Depends(get_db)):
     """Clear all errors for driver - OPTIMIZED"""
@@ -570,3 +586,94 @@ def clear_driver_errors(driver_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to clear driver errors"
         )
+
+
+@router.post("/check-phone")
+def check_phone_number(payload: dict, db: Session = Depends(get_db)):
+    """Check if a phone number is registered as a driver (used for login)"""
+    phone_number = payload.get("phone_number")
+    if not phone_number:
+        raise HTTPException(status_code=400, detail="phone_number is required")
+    driver = crud_driver.get_by_phone(db, phone_number=int(phone_number))
+    if not driver:
+        return {"exists": False, "message": "Phone number not registered"}
+    return {
+        "exists": True,
+        "driver_id": driver.driver_id,
+        "name": driver.name,
+        "is_approved": driver.is_approved
+    }
+
+
+@router.get("/locations")
+def get_all_driver_locations(db: Session = Depends(get_db)):
+    """Get all drivers with their real-time GPS location from driver_live_location table"""
+    from app.models import DriverLiveLocation
+    locations = db.query(DriverLiveLocation).all()
+    return [
+        {
+            "driver_id": loc.driver_id,
+            "latitude": float(loc.latitude),
+            "longitude": float(loc.longitude),
+            "last_updated": loc.last_updated.isoformat() if loc.last_updated else None
+        }
+        for loc in locations
+    ]
+
+
+@router.post("/{driver_id}/location")
+def update_driver_location(driver_id: str, payload: dict, db: Session = Depends(get_db)):
+    """Update driver's real-time GPS location - saves to driver_live_location table"""
+    from app.models import DriverLiveLocation
+    from decimal import Decimal
+
+    latitude = payload.get("latitude")
+    longitude = payload.get("longitude")
+
+    if latitude is None or longitude is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="latitude and longitude are required"
+        )
+
+    driver = crud_driver.get(db, id=driver_id)
+    if not driver:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Driver not found")
+
+    # Upsert into driver_live_location
+    existing = db.query(DriverLiveLocation).filter(
+        DriverLiveLocation.driver_id == driver_id
+    ).first()
+
+    if existing:
+        existing.latitude = Decimal(str(latitude))
+        existing.longitude = Decimal(str(longitude))
+    else:
+        db.add(DriverLiveLocation(
+            driver_id=driver_id,
+            latitude=Decimal(str(latitude)),
+            longitude=Decimal(str(longitude))
+        ))
+
+    db.commit()
+    return {"status": "success", "message": "Location updated", "driver_id": driver_id, "latitude": latitude, "longitude": longitude}
+
+
+@router.get("/{driver_id}/location")
+def get_driver_location(driver_id: str, db: Session = Depends(get_db)):
+    """Get driver's current real-time GPS location"""
+    from app.models import DriverLiveLocation
+
+    location = db.query(DriverLiveLocation).filter(
+        DriverLiveLocation.driver_id == driver_id
+    ).first()
+
+    if not location:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Location not available for this driver")
+
+    return {
+        "driver_id": driver_id,
+        "latitude": float(location.latitude),
+        "longitude": float(location.longitude),
+        "last_updated": location.last_updated.isoformat() if location.last_updated else None
+    }

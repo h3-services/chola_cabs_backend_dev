@@ -15,7 +15,7 @@ from decimal import Decimal
 from datetime import datetime, date, timedelta
 from dateutil.relativedelta import relativedelta
 
-router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
+router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 @router.get("/dashboard", response_model=DashboardSummaryResponse)
 def get_dashboard_summary(db: Session = Depends(get_db)):

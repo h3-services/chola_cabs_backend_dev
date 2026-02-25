@@ -230,6 +230,36 @@ def cancel_request(request_id: str, db: Session = Depends(get_db)):
         "status": "CANCELLED"
     }
 
+@router.post("/{request_id}/start")
+def start_trip_legacy(request_id: str, db: Session = Depends(get_db)):
+    """Start trip via request ID (legacy support)"""
+    from app.models import TripDriverRequest, Trip
+    req = db.query(TripDriverRequest).filter(TripDriverRequest.request_id == request_id).first()
+    if not req or not req.trip_id:
+        raise HTTPException(status_code=404, detail="Request or Trip not found")
+    trip = db.query(Trip).filter(Trip.trip_id == req.trip_id).first()
+    trip.trip_status = "STARTED"
+    from datetime import datetime
+    trip.started_at = datetime.utcnow()
+    db.commit()
+    return {"status": "success", "message": "Trip started via request", "trip_id": trip.trip_id}
+
+
+@router.post("/{request_id}/complete")
+def complete_trip_legacy(request_id: str, db: Session = Depends(get_db)):
+    """Complete trip via request ID (legacy support)"""
+    from app.models import TripDriverRequest, Trip
+    req = db.query(TripDriverRequest).filter(TripDriverRequest.request_id == request_id).first()
+    if not req or not req.trip_id:
+        raise HTTPException(status_code=404, detail="Request or Trip not found")
+    trip = db.query(Trip).filter(Trip.trip_id == req.trip_id).first()
+    trip.trip_status = "COMPLETED"
+    from datetime import datetime
+    trip.ended_at = datetime.utcnow()
+    db.commit()
+    return {"status": "success", "message": "Trip completed via request", "trip_id": trip.trip_id}
+
+
 @router.delete("/{request_id}")
 def delete_request(request_id: str, db: Session = Depends(get_db)):
     """Delete a trip driver request"""

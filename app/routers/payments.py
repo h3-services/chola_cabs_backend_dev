@@ -13,7 +13,7 @@ import hashlib
 import os
 from app.models import WalletTransaction, Driver
 
-router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
+router = APIRouter(prefix="/payments", tags=["payments"])
 
 @router.get("/", response_model=List[PaymentTransactionResponse])
 def get_all_payments(

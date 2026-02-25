@@ -145,6 +145,7 @@ def get_trip_details(trip_id: str, db: Session = Depends(get_db)):
         )
 
 
+@router.post("", status_code=status.HTTP_201_CREATED)
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_trip(trip: TripCreate, db: Session = Depends(get_db)):
     """Create a new trip - OPTIMIZED"""
@@ -500,6 +501,94 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update odometer"
+        )
+
+
+@router.patch("/{trip_id}/start")
+def start_trip(trip_id: str, db: Session = Depends(get_db)):
+    """Mark a trip as STARTED - convenience endpoint for driver app"""
+    try:
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found")
+
+        trip.trip_status = TripStatus.STARTED
+        trip.started_at = datetime.utcnow()
+        db.commit()
+        db.refresh(trip)
+        logger.info(f"Trip started: {trip_id}")
+        return {"message": "Trip started successfully", "trip_id": trip_id, "trip_status": "STARTED", "started_at": trip.started_at.isoformat()}
+    except Exception as e:
+        logger.error(f"Error starting trip {trip_id}: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to start trip")
+
+
+@router.patch("/{trip_id}/extras")
+def update_trip_extras(trip_id: str, payload: dict, db: Session = Depends(get_db)):
+    """Update trip extra charges (toll, waiting, etc.)"""
+    from decimal import Decimal
+    try:
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(status_code=404, detail="Trip not found")
+        
+        # Mapping payload to trip model fields
+        fields_map = {
+            "toll_charges": "toll_charges",
+            "waiting_charges": "waiting_charges",
+            "driver_allowance": "driver_allowance",
+            "night_allowance": "night_allowance",
+            "inter_state_permit_charges": "inter_state_permit_charges",
+            "parking_charges": "toll_charges", # assuming parking goes to toll or similar if no dedicated field
+        }
+        
+        for p_key, m_key in fields_map.items():
+            if p_key in payload and payload[p_key] is not None:
+                setattr(trip, m_key, Decimal(str(payload[p_key])))
+        
+        db.commit()
+        db.refresh(trip)
+        return {"message": "Trip extras updated", "trip_id": trip_id}
+    except Exception as e:
+        logger.error(f"Error updating extras for {trip_id}: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to update extras")
+
+
+@router.patch("/{trip_id}/complete")
+def complete_trip(trip_id: str, db: Session = Depends(get_db)):
+    """Mark a trip as COMPLETED - convenience endpoint for driver app"""
+    try:
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
+
+        trip.trip_status = TripStatus.COMPLETED
+        trip.ended_at = datetime.utcnow()
+        db.commit()
+        db.refresh(trip)
+
+        logger.info(f"Trip completed: {trip_id}")
+
+        return {
+            "message": "Trip completed successfully",
+            "trip_id": trip_id,
+            "trip_status": "COMPLETED",
+            "ended_at": trip.ended_at.isoformat() if trip.ended_at else None,
+            "fare": float(trip.fare) if trip.fare else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error completing trip {trip_id}: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to complete trip"
         )
 
 

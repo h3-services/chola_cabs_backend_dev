@@ -8,14 +8,14 @@ import os
 import shutil
 from dotenv import load_dotenv
 from app.database import get_db
-from app.models import Driver, Vehicle
+from app.models import Driver, Vehicle, Trip
 import pathlib
 
 # Load environment variables with absolute path
 env_path = pathlib.Path(__file__).parent.parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
-router = APIRouter(prefix="/api/v1/uploads", tags=["uploads"])
+router = APIRouter(prefix="/api/uploads", tags=["uploads"])
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
@@ -23,7 +23,7 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
 def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id: str = None, doc_type: str = None) -> str:
     """Save uploaded file and return URL"""
     # Use absolute path to ensure consistency
-    UPLOAD_DIR = "/root/chola_cabs_backend_dev/uploads"
+    UPLOAD_DIR = "/var/www/projects/client_side/chola_cabs/backend/cab_app/uploads"
     BASE_URL = "https://api.cholacabs.in/uploads"
     
     ext = os.path.splitext(file.filename)[1].lower()
@@ -82,6 +82,37 @@ async def upload_licence(driver_id: str, file: UploadFile = File(...), db: Sessi
     driver.licence_url = url
     db.commit()
     return {"licence_url": url}
+
+@router.post("/driver/{driver_id}/police_verification")
+async def upload_police_verification(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(404, "Driver not found")
+    
+    url = save_file(file, "drivers/police_verification", "driver", driver_id, "police_verification")
+    driver.police_verification_url = url
+    db.commit()
+    return {"police_verification_url": url}
+
+@router.post("/trip/{trip_id}/odo_start")
+async def upload_odo_start(trip_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    if not trip:
+        raise HTTPException(404, "Trip not found")
+    url = save_file(file, "trips/odo", "trip", trip_id, "odo_start")
+    trip.odo_start_url = url
+    db.commit()
+    return {"odo_start_url": url}
+
+@router.post("/trip/{trip_id}/odo_end")
+async def upload_odo_end(trip_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    if not trip:
+        raise HTTPException(404, "Trip not found")
+    url = save_file(file, "trips/odo", "trip", trip_id, "odo_end")
+    trip.odo_end_url = url
+    db.commit()
+    return {"odo_end_url": url}
 
 @router.post("/vehicle/{vehicle_id}/rc")
 async def upload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
@@ -153,6 +184,17 @@ async def reupload_licence(driver_id: str, file: UploadFile = File(...), db: Ses
     driver.licence_url = url
     db.commit()
     return {"licence_url": url, "message": "Licence document re-uploaded successfully"}
+
+@router.put("/driver/{driver_id}/police_verification")
+async def reupload_police_verification(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    if not driver:
+        raise HTTPException(404, "Driver not found")
+    url = save_file(file, "drivers/police_verification", "driver", driver_id, "police_verification")
+    driver.police_verification_url = url
+    db.commit()
+    return {"police_verification_url": url}
+
 
 @router.put("/vehicle/{vehicle_id}/rc")
 async def reupload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
