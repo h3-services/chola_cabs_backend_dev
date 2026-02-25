@@ -177,7 +177,7 @@ def update_vehicle(
 @router.patch("/{vehicle_id}/approve")
 def approve_vehicle(
     vehicle_id: str,
-    is_approved: bool,
+    is_approved: bool = True,
     db: Session = Depends(get_db)
 ):
     """Approve or disapprove vehicle - OPTIMIZED"""

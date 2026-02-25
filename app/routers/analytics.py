@@ -287,6 +287,7 @@ def get_12_months_revenue(db: Session = Depends(get_db)):
             detail=f"Database error: {str(e)}"
         )
 
+@router.get("/revenue-history/")
 @router.get("/revenue/range")
 def get_revenue_by_date_range(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
