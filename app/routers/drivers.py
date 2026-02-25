@@ -71,17 +71,35 @@ def get_all_drivers(
 
 @router.get("/locations")
 def get_all_driver_locations(db: Session = Depends(get_db)):
-    """Get all drivers with their real-time GPS location from driver_live_location table"""
-    from app.models import DriverLiveLocation
-    locations = db.query(DriverLiveLocation).all()
+    """Get all drivers with their real-time GPS location - ENHANCED for Frontend"""
+    from app.models import Driver, DriverLiveLocation
+    
+    # Query join between Driver and LiveLocation
+    results = db.query(
+        Driver.driver_id,
+        Driver.name.label("driver_name"),
+        Driver.photo_url,
+        Driver.phone_number,
+        Driver.is_available,
+        DriverLiveLocation.latitude,
+        DriverLiveLocation.longitude,
+        DriverLiveLocation.last_updated
+    ).join(
+        DriverLiveLocation, Driver.driver_id == DriverLiveLocation.driver_id
+    ).all()
+    
     return [
         {
-            "driver_id": loc.driver_id,
-            "latitude": float(loc.latitude),
-            "longitude": float(loc.longitude),
-            "last_updated": loc.last_updated.isoformat() if loc.last_updated else None
+            "driver_id": r.driver_id,
+            "driver_name": r.driver_name,
+            "photo_url": r.photo_url,
+            "latitude": float(r.latitude),
+            "longitude": float(r.longitude),
+            "phone_number": str(r.phone_number),
+            "current_status": "available" if r.is_available else "offline",
+            "last_updated": r.last_updated.isoformat() if r.last_updated else None
         }
-        for loc in locations
+        for r in results
     ]
 
 
