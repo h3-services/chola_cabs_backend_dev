@@ -42,7 +42,7 @@ except Exception as e:
     print(f"[ERROR] Error creating database tables: {e}")
 
 # Mount static files for uploads
-UPLOAD_DIR = "/root/chola_cabs_backend_dev/uploads"
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
