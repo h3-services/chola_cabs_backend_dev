@@ -288,7 +288,7 @@ def get_12_months_revenue(db: Session = Depends(get_db)):
         )
 
 @router.get("/revenue-history/")
-@router.get("/revenue/range")
+@router.get("/revenue/range", include_in_schema=False)
 def get_revenue_by_date_range(
     start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
     end_date: date = Query(..., description="End date (YYYY-MM-DD)"),

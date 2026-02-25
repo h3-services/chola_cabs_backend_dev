@@ -47,19 +47,21 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Include routers - Supporting both /api and /api/v1 for compatibility
+# We only include /api/v1 in the schema to avoid duplicates in Swagger
 for prefix in ["/api", "/api/v1"]:
-    app.include_router(drivers.router, prefix=prefix)
-    app.include_router(vehicles.router, prefix=prefix)
-    app.include_router(trips.router, prefix=prefix)
-    app.include_router(payments.router, prefix=prefix)
-    app.include_router(wallet_transactions.router, prefix=prefix)
-    app.include_router(tariff_config.router, prefix=prefix)
-    app.include_router(raw_data.router, prefix=prefix)
-    app.include_router(error_handling.router, prefix=prefix)
-    app.include_router(trip_requests.router, prefix=prefix)
-    app.include_router(analytics.router, prefix=prefix)
-    app.include_router(uploads.router, prefix=prefix)
-    app.include_router(notifications.router, prefix=prefix)
+    is_v1 = prefix == "/api/v1"
+    app.include_router(drivers.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(vehicles.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(trips.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(payments.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(wallet_transactions.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(tariff_config.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(raw_data.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(error_handling.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(trip_requests.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(analytics.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(uploads.router, prefix=prefix, include_in_schema=is_v1)
+    app.include_router(notifications.router, prefix=prefix, include_in_schema=is_v1)
 
 app.include_router(admins.router)
 

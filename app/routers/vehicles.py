@@ -127,12 +127,6 @@ def create_vehicle(vehicle: VehicleCreate, db: Session = Depends(get_db)):
         )
 
 
-@router.get("", response_model=List[VehicleResponse])
-def get_all_vehicles_no_slash(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """Get all vehicles - no trailing slash version"""
-    return get_all_vehicles(skip=skip, limit=limit, db=db)
-
-
 @router.put("/")
 def update_vehicle_missing_id():
     """Fallback for missing vehicle_id - returns helpful error"""
