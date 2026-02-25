@@ -34,7 +34,7 @@ def get_available_trips(db: Session = Depends(get_db)):
         )
 
 
-@router.get("/", response_model=None)
+@router.get("", response_model=None)
 def get_all_trips(
     skip: int = 0, 
     limit: int = 100, 
