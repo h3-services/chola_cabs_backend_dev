@@ -142,7 +142,7 @@ async def upload_vehicle_photo(vehicle_id: str, position: str, file: UploadFile 
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    if position not in ["front", "back", "left", "right"]:
+    if position not in ["front", "back", "left", "right", "inside"]:
         raise HTTPException(400, "Invalid position")
     
     url = save_file(file, f"vehicles/{position}", "vehicle", vehicle_id, position)
@@ -224,7 +224,7 @@ async def reupload_vehicle_photo(vehicle_id: str, position: str, file: UploadFil
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    if position not in ["front", "back", "left", "right"]:
+    if position not in ["front", "back", "left", "right", "inside"]:
         raise HTTPException(400, "Invalid position")
     
     url = save_file(file, f"vehicles/{position}", "vehicle", vehicle_id, position)
