@@ -18,6 +18,7 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/vehicles", tags=["vehicles"])
 
 
+@router.get("", response_model=List[VehicleResponse], include_in_schema=False)
 @router.get("/", response_model=List[VehicleResponse])
 def get_all_vehicles(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Get all vehicles with pagination - OPTIMIZED"""

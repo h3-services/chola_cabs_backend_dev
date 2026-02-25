@@ -24,6 +24,7 @@ class ApprovalRequest(BaseModel):
 router = APIRouter(prefix="/drivers", tags=["drivers"])
 
 
+@router.get("", response_model=None, include_in_schema=False)
 @router.get("/", response_model=None)
 def get_all_drivers(
     skip: int = 0, 
