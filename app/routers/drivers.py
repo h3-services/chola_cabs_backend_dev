@@ -69,6 +69,39 @@ def get_all_drivers(
         )
 
 
+@router.get("/locations")
+def get_all_driver_locations(db: Session = Depends(get_db)):
+    """Get all drivers with their real-time GPS location from driver_live_location table"""
+    from app.models import DriverLiveLocation
+    locations = db.query(DriverLiveLocation).all()
+    return [
+        {
+            "driver_id": loc.driver_id,
+            "latitude": float(loc.latitude),
+            "longitude": float(loc.longitude),
+            "last_updated": loc.last_updated.isoformat() if loc.last_updated else None
+        }
+        for loc in locations
+    ]
+
+
+@router.post("/check-phone")
+def check_phone_number(payload: dict, db: Session = Depends(get_db)):
+    """Check if a phone number is registered as a driver (used for login)"""
+    phone_number = payload.get("phone_number")
+    if not phone_number:
+        raise HTTPException(status_code=400, detail="phone_number is required")
+    driver = crud_driver.get_by_phone(db, phone_number=int(phone_number))
+    if not driver:
+        return {"exists": False, "message": "Phone number not registered"}
+    return {
+        "exists": True,
+        "driver_id": driver.driver_id,
+        "name": driver.name,
+        "is_approved": driver.is_approved
+    }
+
+
 @router.get("/{driver_id}")
 def get_driver_by_id(driver_id: str, db: Session = Depends(get_db)):
     """Get driver by ID - OPTIMIZED"""
@@ -588,37 +621,7 @@ def clear_driver_errors(driver_id: str, db: Session = Depends(get_db)):
         )
 
 
-@router.post("/check-phone")
-def check_phone_number(payload: dict, db: Session = Depends(get_db)):
-    """Check if a phone number is registered as a driver (used for login)"""
-    phone_number = payload.get("phone_number")
-    if not phone_number:
-        raise HTTPException(status_code=400, detail="phone_number is required")
-    driver = crud_driver.get_by_phone(db, phone_number=int(phone_number))
-    if not driver:
-        return {"exists": False, "message": "Phone number not registered"}
-    return {
-        "exists": True,
-        "driver_id": driver.driver_id,
-        "name": driver.name,
-        "is_approved": driver.is_approved
-    }
 
-
-@router.get("/locations")
-def get_all_driver_locations(db: Session = Depends(get_db)):
-    """Get all drivers with their real-time GPS location from driver_live_location table"""
-    from app.models import DriverLiveLocation
-    locations = db.query(DriverLiveLocation).all()
-    return [
-        {
-            "driver_id": loc.driver_id,
-            "latitude": float(loc.latitude),
-            "longitude": float(loc.longitude),
-            "last_updated": loc.last_updated.isoformat() if loc.last_updated else None
-        }
-        for loc in locations
-    ]
 
 
 @router.post("/{driver_id}/location")
