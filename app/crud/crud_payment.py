@@ -22,6 +22,12 @@ class CRUDPayment(CRUDBase[PaymentTransaction, PaymentTransactionCreate, Payment
         return db.query(PaymentTransaction).filter(
             PaymentTransaction.driver_id == driver_id
         ).offset(skip).limit(limit).all()
+    
+    def get_by_trip(self, db: Session, trip_id: str) -> List[PaymentTransaction]:
+        """Get payments for a trip"""
+        return db.query(PaymentTransaction).filter(
+            PaymentTransaction.trip_id == trip_id
+        ).all()
 
 
 # Wallet CRUD

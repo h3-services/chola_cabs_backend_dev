@@ -309,6 +309,54 @@ def update_trip_status(
         )
 
 
+@router.patch("/{trip_id}/unassign")
+def unassign_driver(trip_id: str, db: Session = Depends(get_db)):
+    """Unassign driver from trip - OPTIMIZED"""
+    try:
+        trip = crud_trip.unassign_driver(db, trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error_code": ErrorCode.TRIP_NOT_FOUND, "message": "Trip not found"}
+            )
+        return {
+            "message": "Driver unassigned successfully",
+            "trip_id": trip_id,
+            "trip_status": trip.trip_status
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error unassigning driver: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unassign driver"
+        )
+
+
+@router.delete("/{trip_id}")
+def delete_trip(trip_id: str, db: Session = Depends(get_db)):
+    """Delete a trip - OPTIMIZED"""
+    try:
+        trip = crud_trip.delete(db, id=trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"error_code": ErrorCode.TRIP_NOT_FOUND, "message": "Trip not found"}
+            )
+        return {"message": "Trip deleted successfully", "trip_id": trip_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting trip: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete trip"
+        )
+
+
 @router.get("/driver/{driver_id}")
 def get_trips_by_driver(driver_id: str, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Get all trips assigned to a specific driver - OPTIMIZED"""

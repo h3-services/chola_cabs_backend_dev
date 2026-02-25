@@ -11,9 +11,17 @@ import uuid
 import hmac
 import hashlib
 import os
-from app.models import WalletTransaction, Driver
+from app.models import WalletTransaction, Driver, PaymentTransaction
+from app.crud.crud_payment import crud_payment
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+
+
+@router.get("/trip/{trip_id}", response_model=List[PaymentTransactionResponse])
+def get_payments_by_trip(trip_id: str, db: Session = Depends(get_db)):
+    """Get all payments for a specific trip"""
+    payments = crud_payment.get_by_trip(db, trip_id=trip_id)
+    return payments
 
 @router.get("/", response_model=List[PaymentTransactionResponse])
 def get_all_payments(

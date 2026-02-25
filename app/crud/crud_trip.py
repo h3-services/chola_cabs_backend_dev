@@ -289,6 +289,23 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
             db.refresh(trip)
         
         return trip
+
+    def unassign_driver(
+        self,
+        db: Session,
+        trip_id: str
+    ) -> Optional[Trip]:
+        """
+        Unassign driver from a trip and set status back to OPEN
+        """
+        trip = self.get(db, id=trip_id)
+        if trip:
+            trip.assigned_driver_id = None
+            trip.trip_status = TripStatus.OPEN
+            db.commit()
+            db.refresh(trip)
+        
+        return trip
     
     def get_statistics(self, db: Session) -> dict:
         """

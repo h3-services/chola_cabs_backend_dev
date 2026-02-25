@@ -149,6 +149,7 @@ class PaymentTransaction(Base):
 
     payment_id = Column(String(36), primary_key=True, index=True)
     driver_id = Column(String(36), ForeignKey("drivers.driver_id"), nullable=True)
+    trip_id = Column(String(36), ForeignKey("trips.trip_id"), nullable=True)
     amount = Column(DECIMAL(10, 2), nullable=True)
     transaction_id = Column(String(100), nullable=True)
     transaction_type = Column(String(50), nullable=True)   # CASH, ONLINE

@@ -416,3 +416,12 @@ class AdminLoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     admin: AdminResponse
+
+# Notification Schemas
+class PushNotificationRequest(BaseModel):
+    registration_ids: Optional[List[str]] = None
+    driverIds: Optional[List[str]] = None
+    title: str
+    body: str
+    notification: Optional[dict] = None
+    data: Optional[dict] = None
