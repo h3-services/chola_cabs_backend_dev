@@ -97,7 +97,8 @@ def get_all_driver_locations(db: Session = Depends(get_db)):
             "latitude": float(r.latitude),
             "longitude": float(r.longitude),
             "phone_number": str(r.phone_number),
-            "current_status": "available" if r.is_available else "offline",
+            "is_available": r.is_available,  # Keeping old field for dashboard
+            "current_status": "available" if r.is_available else "offline", # New requested field
             "last_updated": r.last_updated.isoformat() if r.last_updated else None
         }
         for r in results

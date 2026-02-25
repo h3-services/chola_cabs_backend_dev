@@ -62,8 +62,7 @@ for prefix in ["/api", "/api/v1"]:
     app.include_router(analytics.router, prefix=prefix, include_in_schema=is_v1)
     app.include_router(uploads.router, prefix=prefix, include_in_schema=is_v1)
     app.include_router(notifications.router, prefix=prefix, include_in_schema=is_v1)
-
-app.include_router(admins.router)
+    app.include_router(admins.router, prefix=prefix, include_in_schema=is_v1)
 
 @app.get("/test-file/{filename}")
 def test_file_exists(filename: str):
