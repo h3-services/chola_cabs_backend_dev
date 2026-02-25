@@ -8,6 +8,10 @@ from app.database import get_db
 from app.models import PaymentTransaction
 from app.schemas import PaymentTransactionCreate, PaymentTransactionUpdate, PaymentTransactionResponse
 import uuid
+import hmac
+import hashlib
+import os
+from app.models import WalletTransaction, Driver
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 
@@ -59,7 +63,33 @@ def create_payment(payment: PaymentTransactionCreate, db: Session = Depends(get_
                 detail="Driver not found"
             )
         
-        # Create payment transaction
+        # 1. Verify Razorpay signature if provided (Online Payment)
+        if payment.razorpay_payment_id and payment.razorpay_order_id and payment.razorpay_signature:
+            secret = os.getenv("RAZORPAY_KEY_SECRET")
+            if not secret:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Razorpay secret key not configured on server"
+                )
+            
+            # Payload validation: order_id | payment_id
+            msg = f"{payment.razorpay_order_id}|{payment.razorpay_payment_id}"
+            
+            # Generate local signature
+            generated_signature = hmac.new(
+                secret.encode(),
+                msg.encode(),
+                hashlib.sha256
+            ).hexdigest()
+            
+            # Match check
+            if generated_signature != payment.razorpay_signature:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Payment verification failed! Invalid signature."
+                )
+        
+        # 2. Create payment transaction record
         db_payment = PaymentTransaction(
             payment_id=str(uuid.uuid4()),
             driver_id=payment.driver_id,
@@ -71,8 +101,24 @@ def create_payment(payment: PaymentTransactionCreate, db: Session = Depends(get_
             razorpay_order_id=payment.razorpay_order_id,
             razorpay_signature=payment.razorpay_signature
         )
-        
         db.add(db_payment)
+
+        # 3. If online payment is successful, update wallet immediately
+        from app.schemas import PaymentStatus, TransactionType
+        if payment.status == PaymentStatus.SUCCESS and payment.transaction_type == TransactionType.ONLINE:
+            # Update driver balance
+            driver.wallet_balance += payment.amount
+            
+            # Create a corresponding wallet transaction record
+            wallet_txn = WalletTransaction(
+                wallet_id=str(uuid.uuid4()),
+                driver_id=payment.driver_id,
+                amount=payment.amount,
+                transaction_type="credit",
+                payment_id=db_payment.payment_id
+            )
+            db.add(wallet_txn)
+        
         db.commit()
         db.refresh(db_payment)
         return db_payment
