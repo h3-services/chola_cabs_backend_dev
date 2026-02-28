@@ -11,7 +11,7 @@ from decimal import Decimal
 from app.crud.base import CRUDBase
 from app.models import Trip, Driver, VehicleTariffConfig
 from app.schemas import TripCreate, TripUpdate
-from app.core.constants import TripStatus
+from app.core.constants import TripStatus, MIN_ONE_WAY_KM, MIN_ROUND_TRIP_KM
 
 
 class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
@@ -177,7 +177,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         
         Rules:
         - One Way: Min 130 KM
-        - Round Trip: Min 250 KM
+        - Round Trip: Min 750 KM
         """
         if trip.odo_start is None or trip.odo_end is None:
             return None
@@ -198,13 +198,13 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         
         # Apply Minimum KM Rules
         if trip.trip_type == "One Way":
-            billable_distance = max(actual_distance, Decimal("130"))
+            billable_distance = max(actual_distance, Decimal(str(MIN_ONE_WAY_KM)))
             fare = billable_distance * tariff.one_way_per_km
         elif trip.trip_type == "Round Trip":
-            billable_distance = max(actual_distance, Decimal("250"))
+            billable_distance = max(actual_distance, Decimal(str(MIN_ROUND_TRIP_KM)))
             fare = billable_distance * tariff.round_trip_per_km
         else:
-            billable_distance = max(actual_distance, Decimal("130"))
+            billable_distance = max(actual_distance, Decimal(str(MIN_ONE_WAY_KM)))
             fare = billable_distance * tariff.one_way_per_km
             
         return fare

@@ -25,7 +25,7 @@ vehicle_tariff_config:
   - round_trip_per_km (e.g., 10.00)
   - driver_allowance (e.g., 500.00) ✅ STORED BUT NOT USED IN FARE
   - one_way_min_km (e.g., 130)
-  - round_trip_min_km (e.g., 250)
+  - round_trip_min_km (e.g., 750)
 ```
 
 ### **Calculated for Trip:**
@@ -128,7 +128,8 @@ Note: driver_allowance (500.00) is NOT added!
 **Calculation:**
 ```
 Distance = 5400 - 5000 = 400 km
-Fare = 400 × 10.00 = ₹4,000.00
+Billable Distance = 750 km (Minimum 750 km applied)
+Fare = 750 × 10.00 = ₹7,500.00
 
 Note: driver_allowance (600.00) is NOT added!
 ```
@@ -165,7 +166,7 @@ CREATE TABLE vehicle_tariff_config (
   round_trip_per_km DECIMAL(8,2) NOT NULL,   -- Used in fare calculation ✅
   driver_allowance DECIMAL(8,2) NOT NULL,    -- Stored but NOT used in fare ❌
   one_way_min_km INT NOT NULL,               -- For validation only
-  round_trip_min_km INT NOT NULL,            -- For validation only
+  round_trip_min_km INT NOT NULL,            -- Minimum 750 KM applied in calculation
   is_active BOOLEAN DEFAULT TRUE,
   created_at DATETIME,
   updated_at DATETIME
@@ -200,7 +201,7 @@ def calculate_fare(self, db: Session, trip: Trip) -> Optional[Decimal]:
     IMPORTANT: 
     - Fare is calculated ONLY based on odometer distance difference
     - driver_allowance is stored in tariff config but NOT added to fare
-    - Commission is calculated based on distance only
+    - Round Trip: Min 750 KM applied if distance is less
     """
     if not trip.odo_start or not trip.odo_end:
         return None
@@ -222,7 +223,8 @@ def calculate_fare(self, db: Session, trip: Trip) -> Optional[Decimal]:
     if trip.trip_type == "One Way":
         fare = Decimal(distance_km) * tariff.one_way_per_km
     elif trip.trip_type == "Round Trip":
-        fare = Decimal(distance_km) * tariff.round_trip_per_km
+        billable_distance = max(distance_km, Decimal("750"))
+        fare = billable_distance * tariff.round_trip_per_km
     else:
         fare = Decimal(distance_km) * tariff.one_way_per_km
     
@@ -236,7 +238,7 @@ def calculate_fare(self, db: Session, trip: Trip) -> Optional[Decimal]:
 ### **Fare Calculation:**
 - ✅ **Uses**: Odometer distance × Per KM rate
 - ❌ **Does NOT use**: Driver allowance
-- ✅ **Formula**: `fare = (odo_end - odo_start) × per_km_rate`
+- ✅ **Formula**: `fare = billable_distance × per_km_rate` (Where billable_distance applies minimum KM rules: 130km for One Way, 750km for Round Trip)
 
 ### **Driver Allowance:**
 - ✅ **Stored** in tariff config
@@ -255,4 +257,4 @@ def calculate_fare(self, db: Session, trip: Trip) -> Optional[Decimal]:
 The current implementation already follows your requirement:
 - Stores driver allowance in tariff config
 - Does NOT add it to fare calculation
-- Calculates fare based ONLY on odometer distance difference
+- Calculates fare based on odometer distance with **Minimum KM** rules (750km for Round Trip)
