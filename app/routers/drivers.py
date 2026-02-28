@@ -59,7 +59,8 @@ def get_all_drivers(
                 "is_approved": driver.is_approved,
                 "errors": driver.errors,
                 "created_at": driver.created_at.isoformat() if driver.created_at else None,
-                "updated_at": driver.updated_at.isoformat() if driver.updated_at else None
+                "updated_at": driver.updated_at.isoformat() if driver.updated_at else None,
+                "police_verification_url": driver.police_verification_url
             })
         return result
     except Exception as e:
@@ -155,7 +156,8 @@ def get_driver_by_id(driver_id: str, db: Session = Depends(get_db)):
             "is_approved": driver.is_approved,
             "errors": driver.errors,
             "created_at": driver.created_at.isoformat() if driver.created_at else None,
-            "updated_at": driver.updated_at.isoformat() if driver.updated_at else None
+            "updated_at": driver.updated_at.isoformat() if driver.updated_at else None,
+            "police_verification_url": driver.police_verification_url
         }
     except HTTPException:
         raise

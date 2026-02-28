@@ -44,6 +44,7 @@ class DriverBase(BaseModel):
     licence_number: Optional[str] = None
     aadhar_number: Optional[str] = None
     licence_expiry: Optional[date] = None
+    police_verification_url: Optional[str] = None
 
 class DriverCreate(DriverBase):
     device_id: Optional[str] = None
@@ -56,6 +57,7 @@ class DriverUpdate(BaseModel):
     aadhar_number: Optional[str] = None
     licence_expiry: Optional[date] = None
     device_id: Optional[str] = None
+    police_verification_url: Optional[str] = None
 
 class DriverResponse(DriverBase):
     driver_id: str
@@ -71,6 +73,7 @@ class DriverResponse(DriverBase):
     errors: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    police_verification_url: Optional[str] = None
     
     class Config:
         from_attributes = True
