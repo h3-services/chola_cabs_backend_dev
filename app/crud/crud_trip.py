@@ -171,16 +171,20 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         self,
         db: Session,
         trip: Trip
-    ) -> Optional[Decimal]:
+    ) -> dict:
         """
-        Calculate fare for a trip with minimum KM rules
+        Calculate fare and chargeable distance for a trip with minimum KM rules
         
-        Rules:
-        - One Way: Min 130 KM
-        - Round Trip: Min 750 KM
+        Formula:
+        If tripType = oneWay → chargeableDistance = max(distanceInKm, 130)
+        If tripType = roundTrip → chargeableDistance = max(distanceInKm, 750)
+        totalAmount = chargeableDistance × pricePerKm
+        
+        Returns:
+            dict: { "fare": Decimal, "chargeable_distance": Decimal }
         """
         if trip.odo_start is None or trip.odo_end is None:
-            return None
+            return {"fare": Decimal("0"), "chargeable_distance": Decimal("0")}
         
         from app.models import VehicleTariffConfig
         
@@ -191,23 +195,38 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         ).first()
         
         if not tariff:
-            return None
+            return {"fare": Decimal("0"), "chargeable_distance": Decimal("0")}
         
         # Calculate actual distance
-        actual_distance = Decimal(trip.odo_end - trip.odo_start)
+        actual_distance = Decimal(str(trip.odo_end - trip.odo_start))
+        
+        # Normalize trip type for robust comparison
+        # Handles "One Way", "one_way", "oneWay", "round_trip", etc.
+        trip_type_norm = (trip.trip_type or "").strip().lower().replace("_", "").replace(" ", "")
         
         # Apply Minimum KM Rules
-        if trip.trip_type == "One Way":
-            billable_distance = max(actual_distance, Decimal(str(MIN_ONE_WAY_KM)))
-            fare = billable_distance * tariff.one_way_per_km
-        elif trip.trip_type == "Round Trip":
-            billable_distance = max(actual_distance, Decimal(str(MIN_ROUND_TRIP_KM)))
-            fare = billable_distance * tariff.round_trip_per_km
-        else:
-            billable_distance = max(actual_distance, Decimal(str(MIN_ONE_WAY_KM)))
-            fare = billable_distance * tariff.one_way_per_km
+        if trip_type_norm in ["oneway", "onewaytrip"]:
+            # One Way: default 130 KM
+            min_km = tariff.one_way_min_km if tariff.one_way_min_km is not None else MIN_ONE_WAY_KM
+            chargeable_distance = max(actual_distance, Decimal(str(min_km)))
+            fare = chargeable_distance * tariff.one_way_per_km
             
-        return fare
+        elif trip_type_norm in ["roundtrip", "roundtripway"]:
+            # Round Trip: default 750 KM
+            min_km = tariff.round_trip_min_km if tariff.round_trip_min_km is not None else MIN_ROUND_TRIP_KM
+            chargeable_distance = max(actual_distance, Decimal(str(min_km)))
+            fare = chargeable_distance * tariff.round_trip_per_km
+            
+        else:
+            # Default fallback (usually One Way logic)
+            min_km = tariff.one_way_min_km if tariff.one_way_min_km is not None else MIN_ONE_WAY_KM
+            chargeable_distance = max(actual_distance, Decimal(str(min_km)))
+            fare = chargeable_distance * tariff.one_way_per_km
+            
+        return {
+            "fare": fare,
+            "chargeable_distance": chargeable_distance
+        }
 
     def update_status(
         self,
@@ -235,7 +254,9 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                 
                 # Calculate fare if not set
                 if not trip.fare:
-                    trip.fare = self.calculate_fare(db, trip)
+                    fare_data = self.calculate_fare(db, trip)
+                    trip.fare = fare_data["fare"]
+                    trip.distance_km = fare_data["chargeable_distance"]
                 
                 # ✅ ONLY DEBIT commission from wallet (Customer pays driver directly)
                 if trip.fare and trip.assigned_driver_id:

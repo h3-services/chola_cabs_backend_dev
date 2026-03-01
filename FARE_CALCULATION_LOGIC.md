@@ -218,17 +218,25 @@ def calculate_fare(self, db: Session, trip: Trip) -> Optional[Decimal]:
     # Calculate distance from odometer readings
     distance_km = trip.odo_end - trip.odo_start
     
-    # Calculate fare based ONLY on distance × per_km_rate
-    # NOTE: driver_allowance is NOT included in fare calculation
-    if trip.trip_type == "One Way":
-        fare = Decimal(distance_km) * tariff.one_way_per_km
-    elif trip.trip_type == "Round Trip":
-        billable_distance = max(distance_km, Decimal("750"))
-        fare = billable_distance * tariff.round_trip_per_km
-    else:
-        fare = Decimal(distance_km) * tariff.one_way_per_km
+    # Normalize trip type for robust comparison
+    # Handles "One Way", "one_way", "oneWay", "round_trip", etc.
+    trip_type_norm = (trip.trip_type or "").strip().lower().replace("_", "").replace(" ", "")
     
-    return fare
+    # Apply Minimum KM Rules (Default: One Way 130km, Round Trip 750km)
+    if trip_type_norm in ["oneway", "onewaytrip"]:
+        min_km = tariff.one_way_min_km or 130
+        chargeable_distance = max(distance_km, Decimal(str(min_km)))
+        fare = chargeable_distance * tariff.one_way_per_km
+    elif trip_type_norm in ["roundtrip", "roundtripway"]:
+        min_km = tariff.round_trip_min_km or 750
+        chargeable_distance = max(distance_km, Decimal(str(min_km)))
+        fare = chargeable_distance * tariff.round_trip_per_km
+    else:
+        min_km = tariff.one_way_min_km or 130
+        chargeable_distance = max(distance_km, Decimal(str(min_km)))
+        fare = chargeable_distance * tariff.one_way_per_km
+    
+    return { "fare": fare, "chargeable_distance": chargeable_distance }
 ```
 
 ---

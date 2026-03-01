@@ -484,10 +484,11 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
             trip.trip_status = TripStatus.COMPLETED
             trip.ended_at = datetime.utcnow()
             
-            # ✅ Calculate fare using CRUD (distance × per_km_rate only)
-            fare = crud_trip.calculate_fare(db, trip)
-            if fare:
-                trip.fare = Decimal(fare).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            # ✅ Calculate fare using CRUD (distance × per_km_rate with min KM)
+            fare_data = crud_trip.calculate_fare(db, trip)
+            if fare_data.get("fare"):
+                trip.fare = Decimal(fare_data["fare"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                trip.distance_km = fare_data["chargeable_distance"]
                 
                 # ✅ Calculate 10% commission safely
                 comm_pct = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")
@@ -659,13 +660,18 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
             )
         
         # ✅ OPTIMIZED: Calculate fare using CRUD
-        new_fare = crud_trip.calculate_fare(db, trip)
+        fare_data = crud_trip.calculate_fare(db, trip)
+        new_fare = fare_data["fare"]
+        chargeable_distance = fare_data["chargeable_distance"]
         
         if not new_fare:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot calculate fare. Missing odometer readings or tariff config."
             )
+        
+        # Update distance_km to match chargeable distance
+        trip.distance_km = chargeable_distance
         
         old_fare = trip.fare or Decimal(0)
         
