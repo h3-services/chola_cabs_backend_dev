@@ -56,6 +56,7 @@ def get_all_drivers(
                 "device_id": driver.device_id,
                 "fcm_tokens": driver.fcm_tokens,
                 "is_available": driver.is_available,
+                "current_status": "ready" if driver.is_available is not False else "offline",
                 "is_approved": driver.is_approved,
                 "errors": driver.errors,
                 "created_at": driver.created_at.isoformat() if driver.created_at else None,
@@ -99,7 +100,7 @@ def get_all_driver_locations(db: Session = Depends(get_db)):
             "longitude": float(r.longitude),
             "phone_number": str(r.phone_number),
             "is_available": r.is_available,  # Keeping old field for dashboard
-            "current_status": "available" if r.is_available else "offline", # New requested field
+            "current_status": "ready" if r.is_available is not False else "offline", # Updated: defaults to 'ready' if True or Null
             "last_updated": r.last_updated.isoformat() if r.last_updated else None
         }
         for r in results
@@ -153,6 +154,7 @@ def get_driver_by_id(driver_id: str, db: Session = Depends(get_db)):
             "device_id": driver.device_id,
             "fcm_tokens": driver.fcm_tokens,
             "is_available": driver.is_available,
+            "current_status": "ready" if driver.is_available is not False else "offline",
             "is_approved": driver.is_approved,
             "errors": driver.errors,
             "created_at": driver.created_at.isoformat() if driver.created_at else None,
@@ -264,7 +266,8 @@ def update_driver_availability(
         return {
             "message": f"Driver availability updated to {'available' if is_available else 'unavailable'}",
             "driver_id": driver_id,
-            "is_available": is_available
+            "is_available": is_available,
+            "current_status": "ready" if is_available else "offline"
         }
     except HTTPException:
         raise
