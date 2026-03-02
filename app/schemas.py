@@ -281,6 +281,7 @@ class VehicleTariffConfigBase(BaseModel):
     round_trip_per_km: Decimal
     round_trip_min_km: int
     driver_allowance: Decimal
+    driver_commission: Decimal = Decimal("10.00")
     is_active: bool = True
 
 class VehicleTariffConfigCreate(VehicleTariffConfigBase):
@@ -293,6 +294,7 @@ class VehicleTariffConfigUpdate(BaseModel):
     round_trip_per_km: Optional[Decimal] = None
     round_trip_min_km: Optional[int] = None
     driver_allowance: Optional[Decimal] = None
+    driver_commission: Optional[Decimal] = None
     is_active: Optional[bool] = None
 
 class VehicleTariffConfigResponse(VehicleTariffConfigBase):

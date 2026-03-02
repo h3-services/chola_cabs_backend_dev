@@ -260,7 +260,14 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                 
                 # ✅ ONLY DEBIT commission from wallet (Customer pays driver directly)
                 if trip.fare and trip.assigned_driver_id:
-                    comm_pct = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")
+                    # Get tariff for this vehicle type to use its specific commission rate
+                    tariff = db.query(VehicleTariffConfig).filter(
+                        VehicleTariffConfig.vehicle_type == trip.vehicle_type,
+                        VehicleTariffConfig.is_active == True
+                    ).first()
+                    
+                    commission_rate = Decimal(str(tariff.driver_commission)) if tariff and tariff.driver_commission is not None else Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT))
+                    comm_pct = commission_rate / Decimal("100")
                     commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                     
                     # Get driver

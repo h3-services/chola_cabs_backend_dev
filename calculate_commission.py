@@ -46,20 +46,25 @@ try:
         odo_end = 1250
         distance = odo_end - odo_start
         fare = distance * float(sedan_tariff.one_way_per_km)
-        commission = fare * (DEFAULT_DRIVER_COMMISSION_PERCENT / 100)
+        
+        # Use driver_commission from database if available
+        comm_pct_val = float(sedan_tariff.driver_commission) if sedan_tariff.driver_commission else DEFAULT_DRIVER_COMMISSION_PERCENT
+        
+        commission = fare * (comm_pct_val / 100)
         driver_receives = fare - commission
         
         print(f"Odometer Start: {odo_start}")
         print(f"Odometer End: {odo_end}")
         print(f"Distance: {distance} km")
         print(f"Per KM Rate (One Way): ₹{sedan_tariff.one_way_per_km}")
+        print(f"Commission Percentage: {comm_pct_val}%")
         print(f"\nFare Calculation:")
         print(f"  Fare = Distance × Per KM Rate")
         print(f"  Fare = {distance} × ₹{sedan_tariff.one_way_per_km}")
         print(f"  Fare = ₹{fare:.2f}")
         print(f"\nCommission Calculation:")
-        print(f"  Commission = Fare × {DEFAULT_DRIVER_COMMISSION_PERCENT}%")
-        print(f"  Commission = ₹{fare:.2f} × {DEFAULT_DRIVER_COMMISSION_PERCENT/100}")
+        print(f"  Commission = Fare × {comm_pct_val}%")
+        print(f"  Commission = ₹{fare:.2f} × {comm_pct_val/100}")
         print(f"  Commission = ₹{commission:.2f}")
         print(f"\nDriver Receives:")
         print(f"  Driver Amount = Fare - Commission")
