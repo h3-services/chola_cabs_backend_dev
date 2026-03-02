@@ -122,9 +122,7 @@ def get_all_driver_locations(db: Session = Depends(get_db)):
             "latitude": float(r.latitude),
             "longitude": float(r.longitude),
             "phone_number": str(r.phone_number),
-            "is_available": r.is_available,
             "current_status": status,
-            "active_trip_status": r.active_trip_status,
             "last_updated": r.last_updated.isoformat() if r.last_updated else None
         })
         
