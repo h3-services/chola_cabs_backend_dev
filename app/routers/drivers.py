@@ -33,8 +33,11 @@ def get_all_drivers(
 ):
     """Get all drivers with pagination - OPTIMIZED"""
     try:
-        # ✅ OPTIMIZED: Using CRUD layer
-        drivers = crud_driver.get_multi(db, skip=skip, limit=limit)
+        from sqlalchemy.orm import joinedload
+        from app.models import Driver
+        
+        # ✅ OPTIMIZED: Using joinedload to get trips in one query for status calculation
+        drivers = db.query(Driver).options(joinedload(Driver.trips)).offset(skip).limit(limit).all()
         
         # Convert to dict to avoid validation issues
         result = []
@@ -150,8 +153,11 @@ def check_phone_number(payload: dict, db: Session = Depends(get_db)):
 def get_driver_by_id(driver_id: str, db: Session = Depends(get_db)):
     """Get driver by ID - OPTIMIZED"""
     try:
-        # ✅ OPTIMIZED: Using CRUD layer
-        driver = crud_driver.get(db, id=driver_id)
+        from sqlalchemy.orm import joinedload
+        from app.models import Driver
+        
+        # ✅ OPTIMIZED: Eager load trips for status calculation
+        driver = db.query(Driver).options(joinedload(Driver.trips)).filter(Driver.driver_id == driver_id).first()
         
         if not driver:
             raise HTTPException(
