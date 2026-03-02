@@ -133,7 +133,11 @@ def get_trip_details(trip_id: str, db: Session = Depends(get_db)):
                 "name": trip.assigned_driver.name,
                 "phone_number": str(trip.assigned_driver.phone_number),
                 "is_available": trip.assigned_driver.is_available,
-                "current_status": "ready" if trip.assigned_driver.is_available is not False else "offline"
+                "current_status": (
+                    "driving" if trip.trip_status == "STARTED" else
+                    "busy" if trip.trip_status == "ASSIGNED" else
+                    "offline" if trip.assigned_driver.is_available is False else "available"
+                )
             }
         
         return response

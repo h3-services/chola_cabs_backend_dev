@@ -56,7 +56,11 @@ def get_all_drivers(
                 "device_id": driver.device_id,
                 "fcm_tokens": driver.fcm_tokens,
                 "is_available": driver.is_available,
-                "current_status": "ready" if driver.is_available is not False else "offline",
+                "current_status": (
+                    "driving" if any(t.trip_status == "STARTED" for t in driver.trips if t.trip_status in ["ASSIGNED", "STARTED"]) else
+                    "busy" if any(t.trip_status == "ASSIGNED" for t in driver.trips if t.trip_status in ["ASSIGNED", "STARTED"]) else
+                    "offline" if driver.is_available is False else "available"
+                ),
                 "is_approved": driver.is_approved,
                 "errors": driver.errors,
                 "created_at": driver.created_at.isoformat() if driver.created_at else None,
@@ -74,10 +78,12 @@ def get_all_drivers(
 
 @router.get("/locations")
 def get_all_driver_locations(db: Session = Depends(get_db)):
-    """Get all drivers with their real-time GPS location - ENHANCED for Frontend"""
-    from app.models import Driver, DriverLiveLocation
+    """Get all drivers with their real-time GPS location - ENHANCED with categories"""
+    from app.models import Driver, DriverLiveLocation, Trip
+    from sqlalchemy import and_
     
-    # Query join between Driver and LiveLocation
+    # Query join between Driver and LiveLocation, and outer join with active Trips
+    # We only care about trips that are currently ASSIGNED or STARTED
     results = db.query(
         Driver.driver_id,
         Driver.name.label("driver_name"),
@@ -86,25 +92,43 @@ def get_all_driver_locations(db: Session = Depends(get_db)):
         Driver.is_available,
         DriverLiveLocation.latitude,
         DriverLiveLocation.longitude,
-        DriverLiveLocation.last_updated
+        DriverLiveLocation.last_updated,
+        Trip.trip_status.label("active_trip_status")
     ).join(
         DriverLiveLocation, Driver.driver_id == DriverLiveLocation.driver_id
+    ).outerjoin(
+        Trip, and_(
+            Driver.driver_id == Trip.assigned_driver_id,
+            Trip.trip_status.in_(["ASSIGNED", "STARTED"])
+        )
     ).all()
     
-    return [
-        {
+    response = []
+    for r in results:
+        # Determine status category - Priority: Trip Activity > Manual Toggle
+        if r.active_trip_status == "STARTED":
+            status = "driving"
+        elif r.active_trip_status == "ASSIGNED":
+            status = "busy"
+        elif r.is_available is False:
+            status = "offline"
+        else:
+            status = "available"
+            
+        response.append({
             "driver_id": r.driver_id,
             "driver_name": r.driver_name,
             "photo_url": r.photo_url,
             "latitude": float(r.latitude),
             "longitude": float(r.longitude),
             "phone_number": str(r.phone_number),
-            "is_available": r.is_available,  # Keeping old field for dashboard
-            "current_status": "ready" if r.is_available is not False else "offline", # Updated: defaults to 'ready' if True or Null
+            "is_available": r.is_available,
+            "current_status": status,
+            "active_trip_status": r.active_trip_status,
             "last_updated": r.last_updated.isoformat() if r.last_updated else None
-        }
-        for r in results
-    ]
+        })
+        
+    return response
 
 
 @router.post("/check-phone")
@@ -154,7 +178,11 @@ def get_driver_by_id(driver_id: str, db: Session = Depends(get_db)):
             "device_id": driver.device_id,
             "fcm_tokens": driver.fcm_tokens,
             "is_available": driver.is_available,
-            "current_status": "ready" if driver.is_available is not False else "offline",
+            "current_status": (
+                "driving" if any(t.trip_status == "STARTED" for t in driver.trips if t.trip_status in ["ASSIGNED", "STARTED"]) else
+                "busy" if any(t.trip_status == "ASSIGNED" for t in driver.trips if t.trip_status in ["ASSIGNED", "STARTED"]) else
+                "offline" if driver.is_available is False else "available"
+            ),
             "is_approved": driver.is_approved,
             "errors": driver.errors,
             "created_at": driver.created_at.isoformat() if driver.created_at else None,
