@@ -160,6 +160,14 @@ class TripUpdate(BaseModel):
     planned_end_at: Optional[datetime] = None
     is_manual_assignment: Optional[bool] = None
     passenger_count: Optional[int] = None
+    waiting_charges: Optional[Decimal] = None
+    inter_state_permit_charges: Optional[Decimal] = None
+    driver_allowance: Optional[Decimal] = None
+    luggage_cost: Optional[Decimal] = None
+    pet_cost: Optional[Decimal] = None
+    toll_charges: Optional[Decimal] = None
+    night_allowance: Optional[Decimal] = None
+    total_amount: Optional[Decimal] = None
 
 class TripStatusUpdate(BaseModel):
     status: str
@@ -175,6 +183,14 @@ class TripResponse(TripBase):
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
     is_manual_assignment: bool
+    waiting_charges: Decimal
+    inter_state_permit_charges: Decimal
+    driver_allowance: Decimal
+    luggage_cost: Decimal
+    pet_cost: Decimal
+    toll_charges: Decimal
+    night_allowance: Decimal
+    total_amount: Decimal
     errors: Optional[str] = None
     created_at: datetime
     updated_at: datetime

@@ -22,13 +22,13 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     """Get dashboard summary statistics"""
     try:
         # Total revenue from completed trips
-        total_revenue = db.query(func.sum(Trip.fare)).filter(
+        total_revenue = db.query(func.sum(Trip.total_amount)).filter(
             Trip.trip_status == "COMPLETED"
         ).scalar() or Decimal('0')
         
         # Today's revenue
         today = date.today()
-        today_revenue = db.query(func.sum(Trip.fare)).filter(
+        today_revenue = db.query(func.sum(Trip.total_amount)).filter(
             Trip.trip_status == "COMPLETED",
             func.date(Trip.created_at) == today
         ).scalar() or Decimal('0')
@@ -101,7 +101,7 @@ def get_monthly_revenue(
         # Query monthly revenue data
         monthly_data = db.query(
             extract('month', Trip.created_at).label('month'),
-            func.sum(Trip.fare).label('revenue'),
+            func.sum(Trip.total_amount).label('revenue'),
             func.count(Trip.trip_id).label('trips')
         ).filter(
             extract('year', Trip.created_at) == year,
@@ -168,7 +168,7 @@ def get_revenue_by_vehicle_type(
         # Base query
         query = db.query(
             Trip.vehicle_type,
-            func.sum(Trip.fare).label('revenue'),
+            func.sum(Trip.total_amount).label('revenue'),
             func.count(Trip.trip_id).label('trips')
         ).filter(Trip.trip_status == "COMPLETED")
         
@@ -221,7 +221,7 @@ def get_12_months_revenue(db: Session = Depends(get_db)):
         monthly_data = db.query(
             extract('year', Trip.created_at).label('year'),
             extract('month', Trip.created_at).label('month'),
-            func.sum(Trip.fare).label('revenue'),
+            func.sum(Trip.total_amount).label('revenue'),
             func.count(Trip.trip_id).label('trips')
         ).filter(
             Trip.trip_status == "COMPLETED",
@@ -304,7 +304,7 @@ def get_revenue_by_date_range(
         
         # Query revenue in date range
         revenue_data = db.query(
-            func.sum(Trip.fare).label('total_revenue'),
+            func.sum(Trip.total_amount).label('total_revenue'),
             func.count(Trip.trip_id).label('total_trips')
         ).filter(
             Trip.trip_status == "COMPLETED",
@@ -315,7 +315,7 @@ def get_revenue_by_date_range(
         # Daily breakdown
         daily_data = db.query(
             func.date(Trip.created_at).label('date'),
-            func.sum(Trip.fare).label('revenue'),
+            func.sum(Trip.total_amount).label('revenue'),
             func.count(Trip.trip_id).label('trips')
         ).filter(
             Trip.trip_status == "COMPLETED",

@@ -228,6 +228,23 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
             "chargeable_distance": chargeable_distance
         }
 
+    def calculate_total_amount(self, trip: Trip) -> Decimal:
+        """
+        Calculate total amount for a trip including fare and all extra charges
+        """
+        from decimal import Decimal
+        
+        fare = trip.fare or Decimal("0")
+        waiting = trip.waiting_charges or Decimal("0")
+        inter_state = trip.inter_state_permit_charges or Decimal("0")
+        driver_allow = trip.driver_allowance or Decimal("0")
+        luggage = trip.luggage_cost or Decimal("0")
+        pet = trip.pet_cost or Decimal("0")
+        toll = trip.toll_charges or Decimal("0")
+        night = trip.night_allowance or Decimal("0")
+        
+        return fare + waiting + inter_state + driver_allow + luggage + pet + toll + night
+
     def update_status(
         self,
         db: Session,
@@ -257,6 +274,9 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                     fare_data = self.calculate_fare(db, trip)
                     trip.fare = fare_data["fare"]
                     trip.distance_km = fare_data["chargeable_distance"]
+                
+                # ✅ Calculate total amount (fare + extras)
+                trip.total_amount = self.calculate_total_amount(trip)
                 
                 # ✅ ONLY DEBIT commission from wallet (Customer pays driver directly)
                 if trip.fare and trip.assigned_driver_id:

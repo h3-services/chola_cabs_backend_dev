@@ -66,6 +66,14 @@ def get_all_trips(
                 "assigned_driver_id": trip.assigned_driver_id,
                 "distance_km": float(trip.distance_km) if trip.distance_km else None,
                 "fare": float(trip.fare) if trip.fare else None,
+                "waiting_charges": float(trip.waiting_charges) if trip.waiting_charges else 0.0,
+                "inter_state_permit_charges": float(trip.inter_state_permit_charges) if trip.inter_state_permit_charges else 0.0,
+                "driver_allowance": float(trip.driver_allowance) if trip.driver_allowance else 0.0,
+                "luggage_cost": float(trip.luggage_cost) if trip.luggage_cost else 0.0,
+                "pet_cost": float(trip.pet_cost) if trip.pet_cost else 0.0,
+                "toll_charges": float(trip.toll_charges) if trip.toll_charges else 0.0,
+                "night_allowance": float(trip.night_allowance) if trip.night_allowance else 0.0,
+                "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
                 "odo_start": trip.odo_start,
                 "odo_end": trip.odo_end,
                 "started_at": trip.started_at.isoformat() if trip.started_at else None,
@@ -113,6 +121,14 @@ def get_trip_details(trip_id: str, db: Session = Depends(get_db)):
             "assigned_driver_id": trip.assigned_driver_id,
             "distance_km": float(trip.distance_km) if trip.distance_km else None,
             "fare": float(trip.fare) if trip.fare else None,
+            "waiting_charges": float(trip.waiting_charges) if trip.waiting_charges else 0.0,
+            "inter_state_permit_charges": float(trip.inter_state_permit_charges) if trip.inter_state_permit_charges else 0.0,
+            "driver_allowance": float(trip.driver_allowance) if trip.driver_allowance else 0.0,
+            "luggage_cost": float(trip.luggage_cost) if trip.luggage_cost else 0.0,
+            "pet_cost": float(trip.pet_cost) if trip.pet_cost else 0.0,
+            "toll_charges": float(trip.toll_charges) if trip.toll_charges else 0.0,
+            "night_allowance": float(trip.night_allowance) if trip.night_allowance else 0.0,
+            "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
             "odo_start": trip.odo_start,
             "odo_end": trip.odo_end,
             "started_at": trip.started_at.isoformat() if trip.started_at else None,
@@ -523,7 +539,10 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
                         logger.info(f"Driver {trip.assigned_driver_id} wallet updated: -₹{commission_amount} (Commission deducted)")
                     else:
                         logger.warning(f"Driver {trip.assigned_driver_id} not found for wallet update")
-        
+            
+            # ✅ Calculate total amount (fare + all extras)
+            trip.total_amount = crud_trip.calculate_total_amount(trip)
+            
         db.commit()
         db.refresh(trip)
         
@@ -536,6 +555,10 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
             "odo_end": odo_end,
             "distance_km": float(trip.distance_km) if trip.distance_km else None,
             "fare": float(trip.fare) if trip.fare else None,
+            "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
+            "waiting_charges": float(trip.waiting_charges) if trip.waiting_charges else 0.0,
+            "toll_charges": float(trip.toll_charges) if trip.toll_charges else 0.0,
+            "driver_allowance": float(trip.driver_allowance) if trip.driver_allowance else 0.0,
             "trip_status": trip.trip_status
         }
         
@@ -602,9 +625,12 @@ def update_trip_extras(trip_id: str, payload: dict, db: Session = Depends(get_db
             if p_key in payload and payload[p_key] is not None:
                 setattr(trip, m_key, Decimal(str(payload[p_key])))
         
+        # ✅ Recalculate total amount
+        trip.total_amount = crud_trip.calculate_total_amount(trip)
+        
         db.commit()
         db.refresh(trip)
-        return {"message": "Trip extras updated", "trip_id": trip_id}
+        return {"message": "Trip extras updated", "trip_id": trip_id, "total_amount": float(trip.total_amount)}
     except Exception as e:
         logger.error(f"Error updating extras for {trip_id}: {e}")
         db.rollback()
@@ -696,6 +722,9 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
         
         # Update trip fare
         trip.fare = new_fare
+        
+        # ✅ Recalculate total amount
+        trip.total_amount = crud_trip.calculate_total_amount(trip)
         
         # Update wallet if a driver is assigned
         if trip.assigned_driver_id:
