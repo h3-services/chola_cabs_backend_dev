@@ -476,22 +476,17 @@ def update_odometer_start(
         )
 
 
-class OdometerEndRequest(BaseModel):
-    odo_end: int
-    # ── Extra charges (all optional, default 0) ──────────────────────────
-    waiting_charges: Optional[float] = 0.0
-    toll_charges: Optional[float] = 0.0
-    driver_allowance: Optional[float] = 0.0
-    night_allowance: Optional[float] = 0.0
-    inter_state_permit_charges: Optional[float] = 0.0
-    luggage_cost: Optional[float] = 0.0
-    pet_cost: Optional[float] = 0.0
-
-
 @router.patch("/{trip_id}/odometer/end")
 def update_odometer_end(
     trip_id: str,
-    payload: OdometerEndRequest,
+    odo_end: int,
+    waiting_charges: Optional[float] = 0.0,
+    toll_charges: Optional[float] = 0.0,
+    driver_allowance: Optional[float] = 0.0,
+    night_allowance: Optional[float] = 0.0,
+    inter_state_permit_charges: Optional[float] = 0.0,
+    luggage_cost: Optional[float] = 0.0,
+    pet_cost: Optional[float] = 0.0,
     db: Session = Depends(get_db)
 ):
     """Update trip ending odometer reading, save extra charges, and auto-complete trip."""
@@ -515,24 +510,24 @@ def update_odometer_end(
                 detail="Cannot set end odometer without start odometer"
             )
 
-        if payload.odo_end <= trip.odo_start:
+        if odo_end <= trip.odo_start:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="End odometer must be greater than start odometer"
             )
 
         # ── Save odometer end ─────────────────────────────────────────────
-        trip.odo_end = payload.odo_end
-        trip.distance_km = Decimal(payload.odo_end - trip.odo_start)
+        trip.odo_end = odo_end
+        trip.distance_km = Decimal(odo_end - trip.odo_start)
 
         # ── Save extra charges ────────────────────────────────────────────
-        trip.waiting_charges            = Decimal(str(payload.waiting_charges or 0))
-        trip.toll_charges               = Decimal(str(payload.toll_charges or 0))
-        trip.driver_allowance           = Decimal(str(payload.driver_allowance or 0))
-        trip.night_allowance            = Decimal(str(payload.night_allowance or 0))
-        trip.inter_state_permit_charges = Decimal(str(payload.inter_state_permit_charges or 0))
-        trip.luggage_cost               = Decimal(str(payload.luggage_cost or 0))
-        trip.pet_cost                   = Decimal(str(payload.pet_cost or 0))
+        trip.waiting_charges            = Decimal(str(waiting_charges or 0))
+        trip.toll_charges               = Decimal(str(toll_charges or 0))
+        trip.driver_allowance           = Decimal(str(driver_allowance or 0))
+        trip.night_allowance            = Decimal(str(night_allowance or 0))
+        trip.inter_state_permit_charges = Decimal(str(inter_state_permit_charges or 0))
+        trip.luggage_cost               = Decimal(str(luggage_cost or 0))
+        trip.pet_cost                   = Decimal(str(pet_cost or 0))
 
         logger.info(
             f"Trip {trip_id}: Extras → toll=₹{trip.toll_charges}, waiting=₹{trip.waiting_charges}, "
@@ -588,7 +583,7 @@ def update_odometer_end(
             "message": "Trip completed successfully",
             "trip_id": trip_id,
             "odo_start": trip.odo_start,
-            "odo_end": payload.odo_end,
+            "odo_end": odo_end,
             "distance_km": float(trip.distance_km) if trip.distance_km else None,
             # ── Fare ──
             "fare": float(trip.fare) if trip.fare else 0.0,
