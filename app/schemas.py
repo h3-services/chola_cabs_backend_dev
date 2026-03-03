@@ -154,6 +154,8 @@ class TripUpdate(BaseModel):
     fare: Optional[Decimal] = None
     odo_start: Optional[int] = None
     odo_end: Optional[int] = None
+    odo_start_url: Optional[str] = None
+    odo_end_url: Optional[str] = None
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
     planned_start_at: Optional[datetime] = None
@@ -179,6 +181,8 @@ class TripResponse(TripBase):
     distance_km: Optional[Decimal] = None
     odo_start: Optional[int] = None
     odo_end: Optional[int] = None
+    odo_start_url: Optional[str] = None
+    odo_end_url: Optional[str] = None
     fare: Optional[Decimal] = None
     started_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None

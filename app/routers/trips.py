@@ -76,6 +76,8 @@ def get_all_trips(
                 "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
                 "odo_start": trip.odo_start,
                 "odo_end": trip.odo_end,
+                "odo_start_url": trip.odo_start_url,
+                "odo_end_url": trip.odo_end_url,
                 "started_at": trip.started_at.isoformat() if trip.started_at else None,
                 "ended_at": trip.ended_at.isoformat() if trip.ended_at else None,
                 "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
@@ -131,6 +133,8 @@ def get_trip_details(trip_id: str, db: Session = Depends(get_db)):
             "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
             "odo_start": trip.odo_start,
             "odo_end": trip.odo_end,
+            "odo_start_url": trip.odo_start_url,
+            "odo_end_url": trip.odo_end_url,
             "started_at": trip.started_at.isoformat() if trip.started_at else None,
             "ended_at": trip.ended_at.isoformat() if trip.ended_at else None,
             "planned_start_at": trip.planned_start_at.isoformat() if trip.planned_start_at else None,
@@ -423,8 +427,13 @@ def get_trip_statistics(db: Session = Depends(get_db)):
 
 
 @router.patch("/{trip_id}/odometer/start")
-def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(get_db)):
-    """Update trip starting odometer reading - OPTIMIZED"""
+def update_odometer_start(
+    trip_id: str,
+    odo_start: int,
+    odo_start_url: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Update trip starting odometer reading with optional photo URL - OPTIMIZED"""
     try:
         # ✅ OPTIMIZED: Get trip using CRUD
         trip = crud_trip.get(db, id=trip_id)
@@ -435,6 +444,8 @@ def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(ge
             )
         
         trip.odo_start = odo_start
+        if odo_start_url is not None:
+            trip.odo_start_url = odo_start_url
         
         # Auto-start trip if not already started
         if trip.trip_status == TripStatus.ASSIGNED:
@@ -450,6 +461,7 @@ def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(ge
             "message": "Odometer start updated",
             "trip_id": trip_id,
             "odo_start": odo_start,
+            "odo_start_url": trip.odo_start_url,
             "trip_status": trip.trip_status
         }
     except HTTPException:
@@ -464,7 +476,12 @@ def update_odometer_start(trip_id: str, odo_start: int, db: Session = Depends(ge
 
 
 @router.patch("/{trip_id}/odometer/end")
-def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db)):
+def update_odometer_end(
+    trip_id: str,
+    odo_end: int,
+    odo_end_url: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
     """Update trip ending odometer reading and auto-complete trip with commission calculation"""
     try:
         # Import required models and constants locally for safety
@@ -494,6 +511,8 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
             )
         
         trip.odo_end = odo_end
+        if odo_end_url is not None:
+            trip.odo_end_url = odo_end_url
         trip.distance_km = Decimal(odo_end - trip.odo_start)
         
         # Variables to track commission and earnings
@@ -553,6 +572,7 @@ def update_odometer_end(trip_id: str, odo_end: int, db: Session = Depends(get_db
             "message": "Trip completed successfully",
             "trip_id": trip_id,
             "odo_end": odo_end,
+            "odo_end_url": trip.odo_end_url,
             "distance_km": float(trip.distance_km) if trip.distance_km else None,
             "fare": float(trip.fare) if trip.fare else None,
             "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
