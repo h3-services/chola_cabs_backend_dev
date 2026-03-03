@@ -5,6 +5,7 @@ Uses CRUD layer for production-ready performance
 from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -475,74 +476,93 @@ def update_odometer_start(
         )
 
 
+class OdometerEndRequest(BaseModel):
+    odo_end: int
+    # ── Extra charges (all optional, default 0) ──────────────────────────
+    waiting_charges: Optional[float] = 0.0
+    toll_charges: Optional[float] = 0.0
+    driver_allowance: Optional[float] = 0.0
+    night_allowance: Optional[float] = 0.0
+    inter_state_permit_charges: Optional[float] = 0.0
+    luggage_cost: Optional[float] = 0.0
+    pet_cost: Optional[float] = 0.0
+
+
 @router.patch("/{trip_id}/odometer/end")
 def update_odometer_end(
     trip_id: str,
-    odo_end: int,
-    odo_end_url: Optional[str] = None,
+    payload: OdometerEndRequest,
     db: Session = Depends(get_db)
 ):
-    """Update trip ending odometer reading and auto-complete trip with commission calculation"""
+    """Update trip ending odometer reading, save extra charges, and auto-complete trip."""
     try:
-        # Import required models and constants locally for safety
         from app.models import Driver, WalletTransaction
         from app.core.constants import DEFAULT_DRIVER_COMMISSION_PERCENT, WalletTransactionType
         from decimal import Decimal, ROUND_HALF_UP
         import uuid
-        
-        # ✅ Get trip using CRUD
+
+        # ── Fetch trip ────────────────────────────────────────────────────
         trip = crud_trip.get(db, id=trip_id)
         if not trip:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Trip not found"
             )
-        
+
         if trip.odo_start is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Cannot set end odometer without start odometer"
             )
-        
-        if odo_end <= trip.odo_start:
+
+        if payload.odo_end <= trip.odo_start:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="End odometer must be greater than start odometer"
             )
-        
-        trip.odo_end = odo_end
-        if odo_end_url is not None:
-            trip.odo_end_url = odo_end_url
-        trip.distance_km = Decimal(odo_end - trip.odo_start)
-        
-        # Variables to track commission and earnings
+
+        # ── Save odometer end ─────────────────────────────────────────────
+        trip.odo_end = payload.odo_end
+        trip.distance_km = Decimal(payload.odo_end - trip.odo_start)
+
+        # ── Save extra charges ────────────────────────────────────────────
+        trip.waiting_charges            = Decimal(str(payload.waiting_charges or 0))
+        trip.toll_charges               = Decimal(str(payload.toll_charges or 0))
+        trip.driver_allowance           = Decimal(str(payload.driver_allowance or 0))
+        trip.night_allowance            = Decimal(str(payload.night_allowance or 0))
+        trip.inter_state_permit_charges = Decimal(str(payload.inter_state_permit_charges or 0))
+        trip.luggage_cost               = Decimal(str(payload.luggage_cost or 0))
+        trip.pet_cost                   = Decimal(str(payload.pet_cost or 0))
+
+        logger.info(
+            f"Trip {trip_id}: Extras → toll=₹{trip.toll_charges}, waiting=₹{trip.waiting_charges}, "
+            f"driver_allowance=₹{trip.driver_allowance}, night=₹{trip.night_allowance}, "
+            f"interstate=₹{trip.inter_state_permit_charges}, luggage=₹{trip.luggage_cost}, pet=₹{trip.pet_cost}"
+        )
+
+        # ── Commission tracking ───────────────────────────────────────────
         commission_amount = None
-        driver_earnings = None
-        
-        # Auto-complete trip
+
+        # ── Auto-complete trip ────────────────────────────────────────────
         if trip.trip_status != TripStatus.COMPLETED:
             trip.trip_status = TripStatus.COMPLETED
             trip.ended_at = datetime.utcnow()
-            
-            # ✅ Calculate fare using CRUD (distance × per_km_rate with min KM)
+
+            # Calculate fare (distance × rate, with min KM rules)
             fare_data = crud_trip.calculate_fare(db, trip)
             if fare_data.get("fare"):
                 trip.fare = Decimal(fare_data["fare"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 trip.distance_km = fare_data["chargeable_distance"]
-                
-                # ✅ Calculate 10% commission safely
+
+                # Deduct platform commission from driver wallet
                 comm_pct = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")
                 commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                
+
                 logger.info(f"Trip {trip_id}: Fare=₹{trip.fare}, Commission=₹{commission_amount}")
-                
-                # ✅ Create wallet transactions and update driver balance
+
                 if trip.assigned_driver_id:
-                    # Get driver
                     driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
-                    
                     if driver:
-                        # Create DEBIT transaction for commission (minus from balance)
                         wallet_commission = WalletTransaction(
                             wallet_id=str(uuid.uuid4()),
                             driver_id=trip.assigned_driver_id,
@@ -551,46 +571,48 @@ def update_odometer_end(
                             transaction_type="DEBIT"
                         )
                         db.add(wallet_commission)
-                        
-                        # Update driver wallet balance (Minus commission only)
                         driver.wallet_balance = (driver.wallet_balance or Decimal(0)) - commission_amount
-                        
-                        logger.info(f"Driver {trip.assigned_driver_id} wallet updated: -₹{commission_amount} (Commission deducted)")
+                        logger.info(f"Driver {trip.assigned_driver_id} wallet: -₹{commission_amount} (commission)")
                     else:
                         logger.warning(f"Driver {trip.assigned_driver_id} not found for wallet update")
-            
-            # ✅ Calculate total amount (fare + all extras)
-            trip.total_amount = crud_trip.calculate_total_amount(trip)
-            
+
+        # ── total_amount = fare + all extras ──────────────────────────────
+        trip.total_amount = crud_trip.calculate_total_amount(trip)
+        logger.info(f"Trip {trip_id}: total_amount=₹{trip.total_amount}")
+
         db.commit()
         db.refresh(trip)
-        
-        logger.info(f"Trip {trip_id} completed with fare {trip.fare}")
-        
-        # Build response with commission details
+
+        # ── Build response ────────────────────────────────────────────────
         response = {
             "message": "Trip completed successfully",
             "trip_id": trip_id,
-            "odo_end": odo_end,
-            "odo_end_url": trip.odo_end_url,
+            "odo_start": trip.odo_start,
+            "odo_end": payload.odo_end,
             "distance_km": float(trip.distance_km) if trip.distance_km else None,
-            "fare": float(trip.fare) if trip.fare else None,
+            # ── Fare ──
+            "fare": float(trip.fare) if trip.fare else 0.0,
+            # ── Extras ──
+            "waiting_charges":            float(trip.waiting_charges or 0),
+            "toll_charges":               float(trip.toll_charges or 0),
+            "driver_allowance":           float(trip.driver_allowance or 0),
+            "night_allowance":            float(trip.night_allowance or 0),
+            "inter_state_permit_charges": float(trip.inter_state_permit_charges or 0),
+            "luggage_cost":               float(trip.luggage_cost or 0),
+            "pet_cost":                   float(trip.pet_cost or 0),
+            # ── Grand total ──
             "total_amount": float(trip.total_amount) if trip.total_amount else 0.0,
-            "waiting_charges": float(trip.waiting_charges) if trip.waiting_charges else 0.0,
-            "toll_charges": float(trip.toll_charges) if trip.toll_charges else 0.0,
-            "driver_allowance": float(trip.driver_allowance) if trip.driver_allowance else 0.0,
             "trip_status": trip.trip_status
         }
-        
-        # Add commission details if calculated
+
         if commission_amount is not None:
-            response["commission_deducted"] = float(commission_amount)
-            response["commission_percentage"] = DEFAULT_DRIVER_COMMISSION_PERCENT
-            response["driver_collects_from_customer"] = float(trip.fare) if trip.fare else 0.0
-            response["wallet_updated"] = True
-        
+            response["commission_deducted"]          = float(commission_amount)
+            response["commission_percentage"]         = DEFAULT_DRIVER_COMMISSION_PERCENT
+            response["driver_collects_from_customer"] = float(trip.total_amount) if trip.total_amount else 0.0
+            response["wallet_updated"]                = True
+
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
