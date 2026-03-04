@@ -131,6 +131,32 @@ def get_all_driver_locations(db: Session = Depends(get_db)):
         
     return response
 
+@router.get("/fcm/all")
+def get_all_fcm_tokens(db: Session = Depends(get_db)):
+    """Get all registered FCM tokens from all drivers for bulk notification list"""
+    try:
+        from app.models import Driver
+        # Get all drivers who have an FCM token
+        drivers = db.query(Driver).filter(
+            Driver.fcm_tokens.isnot(None), 
+            Driver.fcm_tokens != ""
+        ).all()
+        
+        return [
+            {
+                "driver_id": d.driver_id,
+                "name": d.name,
+                "fcm_token": d.fcm_tokens
+            } for d in drivers
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching all FCM tokens: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch FCM tokens"
+        )
+
+
 
 @router.post("/check-phone")
 def check_phone_number(payload: dict, db: Session = Depends(get_db)):
