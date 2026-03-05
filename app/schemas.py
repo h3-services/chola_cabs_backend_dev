@@ -26,6 +26,12 @@ class TripDriverRequestStatus(str, Enum):
     REJECTED = "REJECTED"
     CANCELLED = "CANCELLED"
 
+class WalletTransactionType(str, Enum):
+    CREDIT = "credit"
+    DEBIT = "debit"
+    ADMIN_CREDIT = "admin_credit"
+    ADMIN_DEBIT = "admin_debit"
+
 # FCM Token Schemas
 class FCMTokenRequest(BaseModel):
     fcm_token: str
@@ -271,21 +277,24 @@ class PaymentTransactionResponse(BaseModel):
 # Wallet Schemas
 class WalletTransactionBase(BaseModel):
     driver_id: str
-    transaction_type: str  # credit or debit
+    transaction_type: WalletTransactionType
     amount: Decimal
+    reason: Optional[str] = None
 
 class WalletTransactionCreate(WalletTransactionBase):
     pass
 
 class WalletTransactionUpdate(BaseModel):
-    transaction_type: Optional[str] = None
+    transaction_type: Optional[WalletTransactionType] = None
     amount: Optional[Decimal] = None
+    reason: Optional[str] = None
 
 class WalletTransactionResponse(BaseModel):
     wallet_id: str
     driver_id: Optional[str] = None
     transaction_type: Optional[str] = None
     amount: Optional[Decimal] = None
+    reason: Optional[str] = None
     trip_id: Optional[str] = None
     payment_id: Optional[str] = None
     created_at: datetime

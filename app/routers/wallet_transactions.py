@@ -6,7 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import WalletTransaction, Driver
-from app.schemas import WalletTransactionCreate, WalletTransactionUpdate, WalletTransactionResponse
+from app.schemas import (
+    WalletTransactionCreate, WalletTransactionUpdate, 
+    WalletTransactionResponse, WalletTransactionType
+)
 
 router = APIRouter(prefix="/wallet-transactions", tags=["wallet-transactions"])
 
@@ -50,9 +53,9 @@ def create_wallet_transaction(transaction: WalletTransactionCreate, db: Session 
     db_transaction = WalletTransaction(**transaction_data)
     
     # Update driver wallet balance
-    if transaction.transaction_type == "credit":
+    if transaction.transaction_type in [WalletTransactionType.CREDIT, WalletTransactionType.ADMIN_CREDIT]:
         driver.wallet_balance += transaction.amount
-    else:  # debit
+    elif transaction.transaction_type in [WalletTransactionType.DEBIT, WalletTransactionType.ADMIN_DEBIT]:
         if driver.wallet_balance < transaction.amount:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

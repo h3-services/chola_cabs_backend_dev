@@ -174,6 +174,7 @@ class WalletTransaction(Base):
     payment_id = Column(String(36), ForeignKey("payment_transactions.payment_id"), nullable=True)
     amount = Column(DECIMAL(10, 2), nullable=True)
     transaction_type = Column(String(50), nullable=True)   # CREDIT, DEBIT
+    reason = Column(String(255), nullable=True)           # Reason for transaction
     created_at = Column(DateTime, default=func.now())
 
     # Relationships
