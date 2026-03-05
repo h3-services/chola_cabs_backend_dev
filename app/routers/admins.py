@@ -13,7 +13,7 @@ from app.schemas import (
 import uuid
 from datetime import datetime
 
-router = APIRouter(prefix="/api/v1/admins", tags=["admins"])
+router = APIRouter(prefix="/admins", tags=["admins"])
 
 # TODO: Implement OTP service
 # TODO: Implement JWT authentication

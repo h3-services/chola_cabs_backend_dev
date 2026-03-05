@@ -10,7 +10,7 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/v1/notifications", tags=["notifications"])
+router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 # Bridge server URL from environment or default
 NOTIFICATION_BRIDGE_URL = os.getenv("NOTIFICATION_BRIDGE_URL", "https://temple.hope3services.cloud/api/notifications/push/token")
