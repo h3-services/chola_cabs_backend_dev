@@ -19,13 +19,13 @@ class CRUDPayment(CRUDBase[PaymentTransaction, PaymentTransactionCreate, Payment
     
     def get_by_driver(self, db: Session, driver_id: str, skip: int = 0, limit: int = 100) -> List[PaymentTransaction]:
         """Get payments for a driver"""
-        return db.query(PaymentTransaction).filter(
+        return self._apply_soft_delete_filter(db.query(PaymentTransaction)).filter(
             PaymentTransaction.driver_id == driver_id
         ).offset(skip).limit(limit).all()
     
     def get_by_trip(self, db: Session, trip_id: str) -> List[PaymentTransaction]:
         """Get payments for a trip"""
-        return db.query(PaymentTransaction).filter(
+        return self._apply_soft_delete_filter(db.query(PaymentTransaction)).filter(
             PaymentTransaction.trip_id == trip_id
         ).all()
 
@@ -36,7 +36,7 @@ class CRUDWallet(CRUDBase[WalletTransaction, WalletTransactionCreate, WalletTran
     
     def get_by_driver(self, db: Session, driver_id: str, skip: int = 0, limit: int = 100) -> List[WalletTransaction]:
         """Get wallet transactions for a driver"""
-        return db.query(WalletTransaction).filter(
+        return self._apply_soft_delete_filter(db.query(WalletTransaction)).filter(
             WalletTransaction.driver_id == driver_id
         ).order_by(WalletTransaction.created_at.desc()).offset(skip).limit(limit).all()
 
@@ -47,11 +47,11 @@ class CRUDAdmin(CRUDBase[Admin, AdminCreate, AdminUpdate]):
     
     def get_by_phone(self, db: Session, phone_number: int) -> Optional[Admin]:
         """Get admin by phone number"""
-        return db.query(Admin).filter(Admin.phone_number == phone_number).first()
+        return self._apply_soft_delete_filter(db.query(Admin)).filter(Admin.phone_number == phone_number).first()
     
     def get_active(self, db: Session, skip: int = 0, limit: int = 100) -> List[Admin]:
         """Get active admins"""
-        return db.query(Admin).filter(Admin.is_active == True).offset(skip).limit(limit).all()
+        return self._apply_soft_delete_filter(db.query(Admin)).filter(Admin.is_active == True).offset(skip).limit(limit).all()
 
 
 # Tariff CRUD
@@ -60,14 +60,14 @@ class CRUDTariff(CRUDBase[VehicleTariffConfig, VehicleTariffConfigCreate, Vehicl
     
     def get_by_vehicle_type(self, db: Session, vehicle_type: str) -> Optional[VehicleTariffConfig]:
         """Get active tariff for vehicle type"""
-        return db.query(VehicleTariffConfig).filter(
+        return self._apply_soft_delete_filter(db.query(VehicleTariffConfig)).filter(
             VehicleTariffConfig.vehicle_type == vehicle_type,
             VehicleTariffConfig.is_active == True
         ).first()
     
     def get_active(self, db: Session) -> List[VehicleTariffConfig]:
         """Get all active tariffs"""
-        return db.query(VehicleTariffConfig).filter(
+        return self._apply_soft_delete_filter(db.query(VehicleTariffConfig)).filter(
             VehicleTariffConfig.is_active == True
         ).all()
 

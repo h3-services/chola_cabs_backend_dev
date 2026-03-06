@@ -23,52 +23,61 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     try:
         # Total revenue from completed trips
         total_revenue = db.query(func.sum(Trip.total_amount)).filter(
+            Trip.is_deleted == False,
             Trip.trip_status == "COMPLETED"
         ).scalar() or Decimal('0')
         
         # Today's revenue
         today = date.today()
         today_revenue = db.query(func.sum(Trip.total_amount)).filter(
+            Trip.is_deleted == False,
             Trip.trip_status == "COMPLETED",
             func.date(Trip.created_at) == today
         ).scalar() or Decimal('0')
         
         # Total trips
-        total_trips = db.query(func.count(Trip.trip_id)).scalar() or 0
+        total_trips = db.query(func.count(Trip.trip_id)).filter(Trip.is_deleted == False).scalar() or 0
         
         # Today's trips
         today_trips = db.query(func.count(Trip.trip_id)).filter(
+            Trip.is_deleted == False,
             func.date(Trip.created_at) == today
         ).scalar() or 0
         
         # Driver statistics
-        total_drivers = db.query(func.count(Driver.driver_id)).scalar() or 0
+        total_drivers = db.query(func.count(Driver.driver_id)).filter(Driver.is_deleted == False).scalar() or 0
         active_drivers = db.query(func.count(Driver.driver_id)).filter(
+            Driver.is_deleted == False,
             Driver.is_available == True,
             Driver.is_approved == True
         ).scalar() or 0
         
         # Trip status counts
         completed_trips = db.query(func.count(Trip.trip_id)).filter(
+            Trip.is_deleted == False,
             Trip.trip_status == "COMPLETED"
         ).scalar() or 0
         
         cancelled_trips = db.query(func.count(Trip.trip_id)).filter(
+            Trip.is_deleted == False,
             Trip.trip_status == "CANCELLED"
         ).scalar() or 0
         
         # Assigned trips (ASSIGNED or STARTED status)
         assigned_trips = db.query(func.count(Trip.trip_id)).filter(
+            Trip.is_deleted == False,
             Trip.trip_status.in_(["ASSIGNED", "STARTED"])
         ).scalar() or 0
         
         # Pending trips (OPEN status)
         pending_trips = db.query(func.count(Trip.trip_id)).filter(
+            Trip.is_deleted == False,
             Trip.trip_status == "OPEN"
         ).scalar() or 0
         
         # In progress trips (STARTED status)
         in_progress_trips = db.query(func.count(Trip.trip_id)).filter(
+            Trip.is_deleted == False,
             Trip.trip_status == "STARTED"
         ).scalar() or 0
         
@@ -104,6 +113,7 @@ def get_monthly_revenue(
             func.sum(Trip.total_amount).label('revenue'),
             func.count(Trip.trip_id).label('trips')
         ).filter(
+            Trip.is_deleted == False,
             extract('year', Trip.created_at) == year,
             Trip.trip_status == "COMPLETED"
         ).group_by(
@@ -170,7 +180,10 @@ def get_revenue_by_vehicle_type(
             Trip.vehicle_type,
             func.sum(Trip.total_amount).label('revenue'),
             func.count(Trip.trip_id).label('trips')
-        ).filter(Trip.trip_status == "COMPLETED")
+        ).filter(
+            Trip.is_deleted == False,
+            Trip.trip_status == "COMPLETED"
+        )
         
         # Add year filter if provided
         if year:
@@ -224,6 +237,7 @@ def get_12_months_revenue(db: Session = Depends(get_db)):
             func.sum(Trip.total_amount).label('revenue'),
             func.count(Trip.trip_id).label('trips')
         ).filter(
+            Trip.is_deleted == False,
             Trip.trip_status == "COMPLETED",
             func.date(Trip.created_at) >= start_date
         ).group_by(
@@ -307,6 +321,7 @@ def get_revenue_by_date_range(
             func.sum(Trip.total_amount).label('total_revenue'),
             func.count(Trip.trip_id).label('total_trips')
         ).filter(
+            Trip.is_deleted == False,
             Trip.trip_status == "COMPLETED",
             func.date(Trip.created_at) >= start_date,
             func.date(Trip.created_at) <= end_date
@@ -318,6 +333,7 @@ def get_revenue_by_date_range(
             func.sum(Trip.total_amount).label('revenue'),
             func.count(Trip.trip_id).label('trips')
         ).filter(
+            Trip.is_deleted == False,
             Trip.trip_status == "COMPLETED",
             func.date(Trip.created_at) >= start_date,
             func.date(Trip.created_at) <= end_date

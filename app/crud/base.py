@@ -2,6 +2,7 @@
 Base CRUD class with generic database operations
 Optimized for production use with eager loading and selective column loading
 """
+from datetime import datetime
 from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
@@ -35,6 +36,12 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             model: SQLAlchemy model class
         """
         self.model = model
+
+    def _apply_soft_delete_filter(self, query: Query) -> Query:
+        """Helper to apply is_deleted filter if the model supports it"""
+        if hasattr(self.model, "is_deleted"):
+            return query.filter(self.model.is_deleted == False)
+        return query
     
     def get(
         self,
@@ -54,6 +61,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             Model instance or None
         """
         query = db.query(self.model)
+        query = self._apply_soft_delete_filter(query)
         
         # Add eager loading if specified
         if eager_load:
@@ -90,6 +98,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             List of model instances
         """
         query = db.query(self.model)
+        query = self._apply_soft_delete_filter(query)
         
         # Apply filters
         if filters:
@@ -134,6 +143,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             Count of records
         """
         query = db.query(self.model)
+        query = self._apply_soft_delete_filter(query)
         
         if filters:
             for column, value in filters.items():
@@ -207,7 +217,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """
         obj = self.get(db, id=id)
         if obj:
-            db.delete(obj)
+            if hasattr(obj, "is_deleted"):
+                obj.is_deleted = True
+                if hasattr(obj, "deleted_at"):
+                    obj.deleted_at = datetime.utcnow()
+                db.add(obj)
+            else:
+                db.delete(obj)
             db.commit()
         return obj
     
@@ -223,7 +239,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             True if exists, False otherwise
         """
         pk_column = inspect(self.model).primary_key[0]
-        return db.query(self.model).filter(pk_column == id).first() is not None
+        query = db.query(self.model).filter(pk_column == id)
+        query = self._apply_soft_delete_filter(query)
+        return query.first() is not None
     
     def get_or_create(
         self,
@@ -244,6 +262,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             Tuple of (model instance, created boolean)
         """
         query = db.query(self.model)
+        query = self._apply_soft_delete_filter(query)
         for key, value in kwargs.items():
             if hasattr(self.model, key):
                 query = query.filter(getattr(self.model, key) == value)

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import VehicleTariffConfig
 from app.schemas import VehicleTariffConfigCreate, VehicleTariffConfigUpdate, VehicleTariffConfigResponse
+from app.crud.crud_payment import crud_tariff
 
 router = APIRouter(prefix="/tariff-config", tags=["tariff-config"])
 
@@ -17,13 +18,13 @@ def get_all_tariff_configs(
     db: Session = Depends(get_db)
 ):
     """Get all tariff configurations"""
-    configs = db.query(VehicleTariffConfig).offset(skip).limit(limit).all()
+    configs = crud_tariff.get_multi(db, skip=skip, limit=limit)
     return configs
 
 @router.get("/{config_id}", response_model=VehicleTariffConfigResponse)
 def get_tariff_config_details(config_id: str, db: Session = Depends(get_db)):
     """Get tariff configuration details by ID"""
-    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
+    config = crud_tariff.get(db, id=config_id)
     if not config:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -52,25 +53,20 @@ def update_tariff_config(
     db: Session = Depends(get_db)
 ):
     """Update tariff configuration"""
-    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
+    config = crud_tariff.get(db, id=config_id)
     if not config:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tariff configuration not found"
         )
     
-    update_data = config_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(config, field, value)
-    
-    db.commit()
-    db.refresh(config)
-    return config
+    updated_config = crud_tariff.update(db, db_obj=config, obj_in=config_update)
+    return updated_config
 
 @router.patch("/{config_id}/toggle-active", response_model=VehicleTariffConfigResponse)
 def toggle_tariff_config_active(config_id: str, db: Session = Depends(get_db)):
     """Toggle is_active status for a tariff configuration"""
-    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
+    config = crud_tariff.get(db, id=config_id)
     if not config:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -85,14 +81,14 @@ def toggle_tariff_config_active(config_id: str, db: Session = Depends(get_db)):
 @router.delete("/{config_id}")
 def delete_tariff_config(config_id: str, db: Session = Depends(get_db)):
     """Delete a tariff configuration"""
-    config = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.tariff_id == config_id).first()
+    config = crud_tariff.get(db, id=config_id)
     if not config:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Tariff configuration not found"
         )
     
-    db.delete(config)
+    crud_tariff.delete(db, id=config_id)
     db.commit()
     
     return {
@@ -103,16 +99,15 @@ def delete_tariff_config(config_id: str, db: Session = Depends(get_db)):
 @router.get("/vehicle-type/{vehicle_type}", response_model=List[VehicleTariffConfigResponse])
 def get_tariff_configs_by_vehicle_type(vehicle_type: str, db: Session = Depends(get_db)):
     """Get tariff configurations for a specific vehicle type"""
-    configs = db.query(VehicleTariffConfig).filter(VehicleTariffConfig.vehicle_type == vehicle_type).all()
+    configs = crud_tariff.get_multi(db)
+    configs = [c for c in configs if c.vehicle_type == vehicle_type]
     return configs
 
 @router.get("/active/{vehicle_type}", response_model=VehicleTariffConfigResponse)
 def get_active_tariff_config(vehicle_type: str, db: Session = Depends(get_db)):
     """Get active tariff configuration for a vehicle type"""
-    config = db.query(VehicleTariffConfig).filter(
-        VehicleTariffConfig.vehicle_type == vehicle_type,
-        VehicleTariffConfig.is_active == True
-    ).first()
+    config = crud_tariff.get_multi(db)
+    config = next((c for c in config if c.vehicle_type == vehicle_type and c.is_active), None)
     
     if not config:
         raise HTTPException(

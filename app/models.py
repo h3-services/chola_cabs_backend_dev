@@ -34,6 +34,8 @@ class Driver(Base):
     police_verification_url = Column(String(255), nullable=True)
     is_verified = Column(Boolean, default=False)
     last_login = Column(DateTime, nullable=True)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     vehicles = relationship("Vehicle", back_populates="driver")
@@ -80,6 +82,8 @@ class Vehicle(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     errors = Column(JSON, nullable=True)
     vehicle_approved = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     driver = relationship("Driver", back_populates="vehicles")
@@ -122,6 +126,8 @@ class Trip(Base):
     total_amount = Column(DECIMAL(10, 2), default=0.00)
     odo_start_url = Column(String(255), nullable=True)
     odo_end_url = Column(String(255), nullable=True)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     assigned_driver = relationship("Driver", back_populates="trips")
@@ -138,6 +144,8 @@ class TripDriverRequest(Base):
     status = Column(String(50), default="PENDING")         # PENDING, ACCEPTED, REJECTED, CANCELLED
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     trip = relationship("Trip", back_populates="trip_requests")
@@ -159,6 +167,8 @@ class PaymentTransaction(Base):
     razorpay_payment_id = Column(String(100), nullable=True)
     razorpay_order_id = Column(String(100), nullable=True)
     razorpay_signature = Column(String(255), nullable=True)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     driver = relationship("Driver", back_populates="payment_transactions")
@@ -176,6 +186,8 @@ class WalletTransaction(Base):
     transaction_type = Column(String(50), nullable=True)   # CREDIT, DEBIT
     reason = Column(String(255), nullable=True)           # Reason for transaction
     created_at = Column(DateTime, default=func.now())
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Relationships
     driver = relationship("Driver", back_populates="wallet_transactions")
@@ -197,6 +209,8 @@ class VehicleTariffConfig(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     driver_commission = Column(DECIMAL(5, 2), default=10.00)
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
 
 class ErrorHandling(Base):
@@ -221,6 +235,8 @@ class Admin(Base):
     created_by = Column(String(36), ForeignKey("admins.admin_id"), nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    is_deleted = Column(Boolean, default=False)
+    deleted_at = Column(DateTime, nullable=True)
 
     # Self-referential relationship
     creator = relationship("Admin", remote_side=[admin_id], backref="created_admins")

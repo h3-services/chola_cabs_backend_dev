@@ -10,6 +10,7 @@ from app.schemas import (
     AdminCreate, AdminUpdate, AdminResponse,
     AdminLoginRequest, AdminVerifyOTPRequest, AdminLoginResponse
 )
+from app.crud.crud_payment import crud_admin
 import uuid
 from datetime import datetime
 
@@ -27,7 +28,7 @@ def get_all_admins(
 ):
     """Get all admins (SUPER_ADMIN only)"""
     try:
-        admins = db.query(Admin).offset(skip).limit(limit).all()
+        admins = crud_admin.get_multi(db, skip=skip, limit=limit)
         return admins
     except Exception as e:
         raise HTTPException(
@@ -39,7 +40,7 @@ def get_all_admins(
 def get_admin_by_id(admin_id: str, db: Session = Depends(get_db)):
     """Get admin by ID"""
     try:
-        admin = db.query(Admin).filter(Admin.admin_id == admin_id).first()
+        admin = crud_admin.get(db, id=admin_id)
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -63,7 +64,7 @@ def create_admin(
     """Create new admin (SUPER_ADMIN only)"""
     try:
         # Check if phone number already exists
-        existing = db.query(Admin).filter(Admin.phone_number == admin.phone_number).first()
+        existing = crud_admin.get_by_phone(db, phone_number=admin.phone_number)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -103,7 +104,7 @@ def update_admin(
 ):
     """Update admin details"""
     try:
-        admin = db.query(Admin).filter(Admin.admin_id == admin_id).first()
+        admin = crud_admin.get(db, id=admin_id)
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -139,7 +140,7 @@ def delete_admin(
 ):
     """Delete admin (SUPER_ADMIN only)"""
     try:
-        admin = db.query(Admin).filter(Admin.admin_id == admin_id).first()
+        admin = crud_admin.get(db, id=admin_id)
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -153,7 +154,7 @@ def delete_admin(
         #         detail="Cannot delete yourself"
         #     )
         
-        db.delete(admin)
+        crud_admin.delete(db, id=admin_id)
         db.commit()
         
         return {"message": "Admin deleted successfully", "admin_id": admin_id}
@@ -170,7 +171,7 @@ def delete_admin(
 def get_admin_by_phone(phone_number: int, db: Session = Depends(get_db)):
     """Get admin by phone number"""
     try:
-        admin = db.query(Admin).filter(Admin.phone_number == phone_number).first()
+        admin = crud_admin.get_by_phone(db, phone_number=phone_number)
         if not admin:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

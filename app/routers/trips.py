@@ -556,7 +556,7 @@ def update_odometer_end(
                 logger.info(f"Trip {trip_id}: Fare=₹{trip.fare}, Commission=₹{commission_amount}")
 
                 if trip.assigned_driver_id:
-                    driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+                    driver = db.query(Driver).filter(Driver.is_deleted == False).filter(Driver.driver_id == trip.assigned_driver_id).first()
                     if driver:
                         wallet_commission = WalletTransaction(
                             wallet_id=str(uuid.uuid4()),
@@ -765,7 +765,7 @@ def recalculate_trip_fare(trip_id: str, db: Session = Depends(get_db)):
         
         # Update wallet if a driver is assigned
         if trip.assigned_driver_id:
-            driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+            driver = db.query(Driver).filter(Driver.is_deleted == False).filter(Driver.driver_id == trip.assigned_driver_id).first()
             if driver:
                 # If commission increased, we need to DEBIT more from wallet
                 # If commission decreased, we need to CREDIT some back

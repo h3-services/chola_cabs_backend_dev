@@ -30,7 +30,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         Returns:
             Trip with driver or None
         """
-        return db.query(Trip).options(
+        return self._apply_soft_delete_filter(db.query(Trip)).options(
             joinedload(Trip.assigned_driver)
         ).filter(Trip.trip_id == trip_id).first()
     
@@ -51,7 +51,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         Returns:
             List of available trips
         """
-        return db.query(Trip).filter(
+        return self._apply_soft_delete_filter(db.query(Trip)).filter(
             and_(
                 Trip.trip_status == TripStatus.OPEN,
                 Trip.assigned_driver_id == None
@@ -77,7 +77,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         Returns:
             List of trips with specified status
         """
-        return db.query(Trip).filter(
+        return self._apply_soft_delete_filter(db.query(Trip)).filter(
             Trip.trip_status == status
         ).offset(skip).limit(limit).all()
     
@@ -100,7 +100,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         Returns:
             List of driver's trips
         """
-        return db.query(Trip).filter(
+        return self._apply_soft_delete_filter(db.query(Trip)).filter(
             Trip.assigned_driver_id == driver_id
         ).order_by(Trip.created_at.desc()).offset(skip).limit(limit).all()
     
@@ -119,7 +119,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         Returns:
             List of active trips
         """
-        query = db.query(Trip).filter(
+        query = self._apply_soft_delete_filter(db.query(Trip)).filter(
             or_(
                 Trip.trip_status == TripStatus.ASSIGNED,
                 Trip.trip_status == TripStatus.STARTED
@@ -154,7 +154,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         Returns:
             List of completed trips
         """
-        query = db.query(Trip).filter(Trip.trip_status == TripStatus.COMPLETED)
+        query = self._apply_soft_delete_filter(db.query(Trip)).filter(Trip.trip_status == TripStatus.COMPLETED)
         
         if start_date:
             query = query.filter(Trip.ended_at >= start_date)
@@ -189,7 +189,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         from app.models import VehicleTariffConfig
         
         # Get tariff config
-        tariff = db.query(VehicleTariffConfig).filter(
+        tariff = self._apply_soft_delete_filter(db.query(VehicleTariffConfig)).filter(
             VehicleTariffConfig.vehicle_type == trip.vehicle_type,
             VehicleTariffConfig.is_active == True
         ).first()
@@ -281,7 +281,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                 # ✅ ONLY DEBIT commission from wallet (Customer pays driver directly)
                 if trip.fare and trip.assigned_driver_id:
                     # Get tariff for this vehicle type to use its specific commission rate
-                    tariff = db.query(VehicleTariffConfig).filter(
+                    tariff = self._apply_soft_delete_filter(db.query(VehicleTariffConfig)).filter(
                         VehicleTariffConfig.vehicle_type == trip.vehicle_type,
                         VehicleTariffConfig.is_active == True
                     ).first()
@@ -291,7 +291,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                     commission_amount = (trip.fare * comm_pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                     
                     # Get driver
-                    driver = db.query(Driver).filter(Driver.driver_id == trip.assigned_driver_id).first()
+                    driver = self._apply_soft_delete_filter(db.query(Driver)).filter(Driver.driver_id == trip.assigned_driver_id).first()
                     
                     if driver:
                         # Create DEBIT transaction for commission
@@ -365,14 +365,14 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         Returns:
             Dictionary with trip statistics
         """
-        total = db.query(Trip).count()
-        open_trips = db.query(Trip).filter(Trip.trip_status == TripStatus.OPEN).count()
-        assigned = db.query(Trip).filter(Trip.trip_status == TripStatus.ASSIGNED).count()
-        started = db.query(Trip).filter(Trip.trip_status == TripStatus.STARTED).count()
-        completed = db.query(Trip).filter(Trip.trip_status == TripStatus.COMPLETED).count()
-        cancelled = db.query(Trip).filter(Trip.trip_status == TripStatus.CANCELLED).count()
+        total = self._apply_soft_delete_filter(db.query(Trip)).count()
+        open_trips = self._apply_soft_delete_filter(db.query(Trip)).filter(Trip.trip_status == TripStatus.OPEN).count()
+        assigned = self._apply_soft_delete_filter(db.query(Trip)).filter(Trip.trip_status == TripStatus.ASSIGNED).count()
+        started = self._apply_soft_delete_filter(db.query(Trip)).filter(Trip.trip_status == TripStatus.STARTED).count()
+        completed = self._apply_soft_delete_filter(db.query(Trip)).filter(Trip.trip_status == TripStatus.COMPLETED).count()
+        cancelled = self._apply_soft_delete_filter(db.query(Trip)).filter(Trip.trip_status == TripStatus.CANCELLED).count()
         
-        total_revenue = db.query(func.sum(Trip.fare)).filter(
+        total_revenue = self._apply_soft_delete_filter(db.query(func.sum(Trip.fare))).filter(
             Trip.trip_status == TripStatus.COMPLETED
         ).scalar() or 0
         

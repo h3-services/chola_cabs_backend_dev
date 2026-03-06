@@ -37,7 +37,7 @@ def get_all_drivers(
         from app.models import Driver
         
         # ✅ OPTIMIZED: Using joinedload to get trips in one query for status calculation
-        drivers = db.query(Driver).options(joinedload(Driver.trips)).offset(skip).limit(limit).all()
+        drivers = db.query(Driver).filter(Driver.is_deleted == False).options(joinedload(Driver.trips)).offset(skip).limit(limit).all()
         
         # Convert to dict to avoid validation issues
         result = []
@@ -97,7 +97,7 @@ def get_all_driver_locations(db: Session = Depends(get_db)):
         DriverLiveLocation.longitude,
         DriverLiveLocation.last_updated,
         Trip.trip_status.label("active_trip_status")
-    ).join(
+    ).filter(Driver.is_deleted == False).join(
         DriverLiveLocation, Driver.driver_id == DriverLiveLocation.driver_id
     ).outerjoin(
         Trip, and_(
@@ -138,6 +138,7 @@ def get_all_fcm_tokens(db: Session = Depends(get_db)):
         from app.models import Driver
         # Get all drivers who have an FCM token
         drivers = db.query(Driver).filter(
+            Driver.is_deleted == False,
             Driver.fcm_tokens.isnot(None), 
             Driver.fcm_tokens != ""
         ).all()
@@ -183,7 +184,7 @@ def get_driver_by_id(driver_id: str, db: Session = Depends(get_db)):
         from app.models import Driver
         
         # ✅ OPTIMIZED: Eager load trips for status calculation
-        driver = db.query(Driver).options(joinedload(Driver.trips)).filter(Driver.driver_id == driver_id).first()
+        driver = db.query(Driver).filter(Driver.is_deleted == False).options(joinedload(Driver.trips)).filter(Driver.driver_id == driver_id).first()
         
         if not driver:
             raise HTTPException(

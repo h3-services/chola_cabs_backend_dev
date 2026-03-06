@@ -27,7 +27,7 @@ class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
         Returns:
             Driver instance or None
         """
-        return db.query(Driver).filter(Driver.phone_number == phone_number).first()
+        return self._apply_soft_delete_filter(db.query(Driver)).filter(Driver.phone_number == phone_number).first()
     
     def get_by_email(self, db: Session, email: str) -> Optional[Driver]:
         """
@@ -40,7 +40,7 @@ class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
         Returns:
             Driver instance or None
         """
-        return db.query(Driver).filter(Driver.email == email).first()
+        return self._apply_soft_delete_filter(db.query(Driver)).filter(Driver.email == email).first()
     
     def get_available_drivers(
         self,
@@ -59,7 +59,7 @@ class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
         Returns:
             List of available drivers
         """
-        return db.query(Driver).filter(
+        return self._apply_soft_delete_filter(db.query(Driver)).filter(
             and_(
                 Driver.is_available == True,
                 Driver.is_approved == True
@@ -83,7 +83,7 @@ class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
         Returns:
             List of drivers pending approval
         """
-        return db.query(Driver).filter(
+        return self._apply_soft_delete_filter(db.query(Driver)).filter(
             Driver.is_approved == False
         ).offset(skip).limit(limit).all()
     
@@ -98,7 +98,7 @@ class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
         Returns:
             Driver with vehicles or None
         """
-        return db.query(Driver).options(
+        return self._apply_soft_delete_filter(db.query(Driver)).options(
             joinedload(Driver.vehicles)
         ).filter(Driver.driver_id == driver_id).first()
     
@@ -121,10 +121,10 @@ class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
         """
         from app.models import Trip
         
-        driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+        driver = self._apply_soft_delete_filter(db.query(Driver)).filter(Driver.driver_id == driver_id).first()
         if driver:
             # Load recent trips separately to apply limit
-            driver.recent_trips = db.query(Trip).filter(
+            driver.recent_trips = self._apply_soft_delete_filter(db.query(Trip)).filter(
                 Trip.assigned_driver_id == driver_id
             ).order_by(Trip.created_at.desc()).limit(limit).all()
         
@@ -222,7 +222,7 @@ class CRUDDriver(CRUDBase[Driver, DriverCreate, DriverUpdate]):
             List of matching drivers
         """
         search_pattern = f"%{query}%"
-        return db.query(Driver).filter(
+        return self._apply_soft_delete_filter(db.query(Driver)).filter(
             or_(
                 Driver.name.ilike(search_pattern),
                 Driver.email.ilike(search_pattern),

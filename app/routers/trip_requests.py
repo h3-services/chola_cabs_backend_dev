@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import TripDriverRequest, Trip, Driver
 from app.schemas import TripDriverRequestCreate, TripDriverRequestUpdate, TripDriverRequestResponse
+from app.crud.crud_trip_request import crud_trip_request
+from app.crud.crud_trip import crud_trip
+from app.crud.crud_driver import crud_driver
 
 router = APIRouter(prefix="/trip-requests", tags=["trip-requests"])
 
@@ -17,11 +20,11 @@ def get_all_requests(
     db: Session = Depends(get_db)
 ):
     """Get all trip driver requests"""
-    requests = db.query(TripDriverRequest).offset(skip).limit(limit).all()
+    requests = crud_trip_request.get_multi(db, skip=skip, limit=limit)
     result = []
     for req in requests:
-        driver = db.query(Driver).filter(Driver.driver_id == req.driver_id).first()
-        trip = db.query(Trip).filter(Trip.trip_id == req.trip_id).first()
+        driver = crud_driver.get(db, id=req.driver_id)
+        trip = crud_trip.get(db, id=req.trip_id)
         result.append({
             "request_id": req.request_id,
             "trip_id": req.trip_id,
@@ -37,12 +40,12 @@ def get_all_requests(
 @router.get("/{request_id}")
 def get_request_by_id(request_id: str, db: Session = Depends(get_db)):
     """Get trip driver request by ID"""
-    request = db.query(TripDriverRequest).filter(TripDriverRequest.request_id == request_id).first()
+    request = crud_trip_request.get(db, id=request_id)
     if not request:
         raise HTTPException(status_code=404, detail="Request not found")
     
-    driver = db.query(Driver).filter(Driver.driver_id == request.driver_id).first()
-    trip = db.query(Trip).filter(Trip.trip_id == request.trip_id).first()
+    driver = crud_driver.get(db, id=request.driver_id)
+    trip = crud_trip.get(db, id=request.trip_id)
     
     return {
         "request_id": request.request_id,
@@ -58,22 +61,20 @@ def get_request_by_id(request_id: str, db: Session = Depends(get_db)):
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_request(trip_id: str, driver_id: str, db: Session = Depends(get_db)):
     """Driver creates request for a trip"""
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    trip = crud_trip.get(db, id=trip_id)
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     
     if trip.trip_status != "OPEN":
         raise HTTPException(status_code=400, detail="Trip is not available")
     
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(status_code=404, detail="Driver not found")
     
     # Check if request already exists
-    existing = db.query(TripDriverRequest).filter(
-        TripDriverRequest.trip_id == trip_id,
-        TripDriverRequest.driver_id == driver_id
-    ).first()
+    existing = crud_trip_request.get_by_trip(db, trip_id=trip_id)
+    existing = next((r for r in existing if r.driver_id == driver_id), None)
     
     if existing:
         raise HTTPException(status_code=400, detail="Request already exists")
@@ -135,8 +136,8 @@ def approve_request(request_id: str, db: Session = Depends(get_db)):
     if not request:
         raise HTTPException(status_code=404, detail="Request not found")
     
-    trip = db.query(Trip).filter(Trip.trip_id == request.trip_id).first()
-    driver = db.query(Driver).filter(Driver.driver_id == request.driver_id).first()
+    trip = crud_trip.get(db, id=request.trip_id)
+    driver = crud_driver.get(db, id=request.driver_id)
     
     if trip.assigned_driver_id:
         raise HTTPException(status_code=400, detail="Trip already assigned")
@@ -148,11 +149,8 @@ def approve_request(request_id: str, db: Session = Depends(get_db)):
     request.status = "ACCEPTED"
     
     # Reject other pending requests for this trip
-    other_requests = db.query(TripDriverRequest).filter(
-        TripDriverRequest.trip_id == request.trip_id,
-        TripDriverRequest.request_id != request_id,
-        TripDriverRequest.status == "PENDING"
-    ).all()
+    other_requests = [r for r in crud_trip_request.get_by_trip(db, trip_id=request.trip_id) 
+                     if r.request_id != request_id and r.status == "PENDING"]
     
     for other in other_requests:
         other.status = "REJECTED"
@@ -169,13 +167,11 @@ def approve_request(request_id: str, db: Session = Depends(get_db)):
 @router.get("/trip/{trip_id}")
 def get_requests_by_trip(trip_id: str, db: Session = Depends(get_db)):
     """Get all requests for a specific trip"""
-    requests = db.query(TripDriverRequest).filter(
-        TripDriverRequest.trip_id == trip_id
-    ).all()
+    requests = crud_trip_request.get_by_trip(db, trip_id=trip_id)
     
     result = []
     for req in requests:
-        driver = db.query(Driver).filter(Driver.driver_id == req.driver_id).first()
+        driver = crud_driver.get(db, id=req.driver_id)
         result.append({
             "request_id": req.request_id,
             "driver_id": req.driver_id,
@@ -189,13 +185,11 @@ def get_requests_by_trip(trip_id: str, db: Session = Depends(get_db)):
 @router.get("/driver/{driver_id}")
 def get_requests_by_driver(driver_id: str, db: Session = Depends(get_db)):
     """Get all requests by a specific driver"""
-    requests = db.query(TripDriverRequest).filter(
-        TripDriverRequest.driver_id == driver_id
-    ).all()
+    requests = crud_trip_request.get_by_driver(db, driver_id=driver_id)
     
     result = []
     for req in requests:
-        trip = db.query(Trip).filter(Trip.trip_id == req.trip_id).first()
+        trip = crud_trip.get(db, id=req.trip_id)
         result.append({
             "request_id": req.request_id,
             "trip_id": req.trip_id,
@@ -270,7 +264,7 @@ def delete_request(request_id: str, db: Session = Depends(get_db)):
     if not request:
         raise HTTPException(status_code=404, detail="Request not found")
     
-    db.delete(request)
+    crud_trip_request.delete(db, id=request_id)
     db.commit()
     
     return {

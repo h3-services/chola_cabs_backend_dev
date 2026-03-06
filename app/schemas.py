@@ -127,6 +127,7 @@ class VehicleResponse(BaseModel):
     vehicle_back_url: Optional[str] = None
     vehicle_left_url: Optional[str] = None
     vehicle_right_url: Optional[str] = None
+    vehicle_inside_url: Optional[str] = None
     vehicle_approved: bool
     errors: Optional[dict] = None
     created_at: datetime

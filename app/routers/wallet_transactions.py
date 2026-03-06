@@ -10,6 +10,8 @@ from app.schemas import (
     WalletTransactionCreate, WalletTransactionUpdate, 
     WalletTransactionResponse, WalletTransactionType
 )
+from app.crud.crud_payment import crud_wallet
+from app.crud.crud_driver import crud_driver
 
 router = APIRouter(prefix="/wallet-transactions", tags=["wallet-transactions"])
 
@@ -20,13 +22,13 @@ def get_all_wallet_transactions(
     db: Session = Depends(get_db)
 ):
     """Get all wallet transactions"""
-    transactions = db.query(WalletTransaction).offset(skip).limit(limit).all()
+    transactions = crud_wallet.get_multi(db, skip=skip, limit=limit)
     return transactions
 
 @router.get("/{transaction_id}", response_model=WalletTransactionResponse)
 def get_wallet_transaction_details(transaction_id: str, db: Session = Depends(get_db)):
     """Get wallet transaction details by ID"""
-    transaction = db.query(WalletTransaction).filter(WalletTransaction.wallet_id == transaction_id).first()
+    transaction = crud_wallet.get(db, id=transaction_id)
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -38,7 +40,7 @@ def get_wallet_transaction_details(transaction_id: str, db: Session = Depends(ge
 def create_wallet_transaction(transaction: WalletTransactionCreate, db: Session = Depends(get_db)):
     """Create a new wallet transaction"""
     # Check if driver exists
-    driver = db.query(Driver).filter(Driver.driver_id == transaction.driver_id).first()
+    driver = crud_driver.get(db, id=transaction.driver_id)
     if not driver:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -75,32 +77,27 @@ def update_wallet_transaction(
     db: Session = Depends(get_db)
 ):
     """Update wallet transaction information"""
-    transaction = db.query(WalletTransaction).filter(WalletTransaction.wallet_id == transaction_id).first()
+    transaction = crud_wallet.get(db, id=transaction_id)
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Wallet transaction not found"
         )
     
-    update_data = transaction_update.dict(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(transaction, field, value)
-    
-    db.commit()
-    db.refresh(transaction)
-    return transaction
+    updated_transaction = crud_wallet.update(db, db_obj=transaction, obj_in=transaction_update)
+    return updated_transaction
 
 @router.delete("/{transaction_id}")
 def delete_wallet_transaction(transaction_id: str, db: Session = Depends(get_db)):
     """Delete a wallet transaction"""
-    transaction = db.query(WalletTransaction).filter(WalletTransaction.wallet_id == transaction_id).first()
+    transaction = crud_wallet.get(db, id=transaction_id)
     if not transaction:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Wallet transaction not found"
         )
     
-    db.delete(transaction)
+    crud_wallet.delete(db, id=transaction_id)
     db.commit()
     
     return {
@@ -111,12 +108,12 @@ def delete_wallet_transaction(transaction_id: str, db: Session = Depends(get_db)
 @router.get("/driver/{driver_id}", response_model=List[WalletTransactionResponse])
 def get_wallet_transactions_by_driver(driver_id: str, db: Session = Depends(get_db)):
     """Get all wallet transactions for a specific driver"""
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Driver not found"
         )
     
-    transactions = db.query(WalletTransaction).filter(WalletTransaction.driver_id == driver_id).all()
+    transactions = crud_wallet.get_by_driver(db, driver_id=driver_id)
     return transactions

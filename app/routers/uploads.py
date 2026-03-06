@@ -9,6 +9,9 @@ import shutil
 from dotenv import load_dotenv
 from app.database import get_db
 from app.models import Driver, Vehicle, Trip
+from app.crud.crud_driver import crud_driver
+from app.crud.crud_vehicle import crud_vehicle
+from app.crud.crud_trip import crud_trip
 import pathlib
 
 # Load environment variables with absolute path
@@ -52,7 +55,7 @@ def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id:
 
 @router.post("/driver/{driver_id}/photo")
 async def upload_driver_photo(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(404, "Driver not found")
     
@@ -63,7 +66,7 @@ async def upload_driver_photo(driver_id: str, file: UploadFile = File(...), db: 
 
 @router.post("/driver/{driver_id}/aadhar")
 async def upload_aadhar(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(404, "Driver not found")
     
@@ -74,7 +77,7 @@ async def upload_aadhar(driver_id: str, file: UploadFile = File(...), db: Sessio
 
 @router.post("/driver/{driver_id}/licence")
 async def upload_licence(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(404, "Driver not found")
     
@@ -85,7 +88,7 @@ async def upload_licence(driver_id: str, file: UploadFile = File(...), db: Sessi
 
 @router.post("/driver/{driver_id}/police_verification")
 async def upload_police_verification(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(404, "Driver not found")
     
@@ -96,7 +99,7 @@ async def upload_police_verification(driver_id: str, file: UploadFile = File(...
 
 @router.post("/trip/{trip_id}/odo_start")
 async def upload_odo_start(trip_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    trip = crud_trip.get(db, id=trip_id)
     if not trip:
         raise HTTPException(404, "Trip not found")
     url = save_file(file, "trips/odo", "trip", trip_id, "odo_start")
@@ -106,7 +109,7 @@ async def upload_odo_start(trip_id: str, file: UploadFile = File(...), db: Sessi
 
 @router.post("/trip/{trip_id}/odo_end")
 async def upload_odo_end(trip_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    trip = db.query(Trip).filter(Trip.trip_id == trip_id).first()
+    trip = crud_trip.get(db, id=trip_id)
     if not trip:
         raise HTTPException(404, "Trip not found")
     url = save_file(file, "trips/odo", "trip", trip_id, "odo_end")
@@ -116,7 +119,7 @@ async def upload_odo_end(trip_id: str, file: UploadFile = File(...), db: Session
 
 @router.post("/vehicle/{vehicle_id}/rc")
 async def upload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
+    vehicle = crud_vehicle.get(db, id=vehicle_id)
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
@@ -127,7 +130,7 @@ async def upload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session =
 
 @router.post("/vehicle/{vehicle_id}/fc")
 async def upload_fc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
+    vehicle = crud_vehicle.get(db, id=vehicle_id)
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
@@ -138,7 +141,7 @@ async def upload_fc(vehicle_id: str, file: UploadFile = File(...), db: Session =
 
 @router.post("/vehicle/{vehicle_id}/photo/{position}")
 async def upload_vehicle_photo(vehicle_id: str, position: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
+    vehicle = crud_vehicle.get(db, id=vehicle_id)
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
@@ -154,7 +157,7 @@ async def upload_vehicle_photo(vehicle_id: str, position: str, file: UploadFile 
 
 @router.put("/driver/{driver_id}/photo")
 async def reupload_driver_photo(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(404, "Driver not found")
     
@@ -165,7 +168,7 @@ async def reupload_driver_photo(driver_id: str, file: UploadFile = File(...), db
 
 @router.put("/driver/{driver_id}/aadhar")
 async def reupload_aadhar(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(404, "Driver not found")
     
@@ -176,7 +179,7 @@ async def reupload_aadhar(driver_id: str, file: UploadFile = File(...), db: Sess
 
 @router.put("/driver/{driver_id}/licence")
 async def reupload_licence(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(404, "Driver not found")
     
@@ -187,7 +190,7 @@ async def reupload_licence(driver_id: str, file: UploadFile = File(...), db: Ses
 
 @router.put("/driver/{driver_id}/police_verification")
 async def reupload_police_verification(driver_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    driver = db.query(Driver).filter(Driver.driver_id == driver_id).first()
+    driver = crud_driver.get(db, id=driver_id)
     if not driver:
         raise HTTPException(404, "Driver not found")
     url = save_file(file, "drivers/police_verification", "driver", driver_id, "police_verification")
@@ -198,7 +201,7 @@ async def reupload_police_verification(driver_id: str, file: UploadFile = File(.
 
 @router.put("/vehicle/{vehicle_id}/rc")
 async def reupload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
+    vehicle = crud_vehicle.get(db, id=vehicle_id)
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
@@ -209,7 +212,7 @@ async def reupload_rc(vehicle_id: str, file: UploadFile = File(...), db: Session
 
 @router.put("/vehicle/{vehicle_id}/fc")
 async def reupload_fc(vehicle_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
+    vehicle = crud_vehicle.get(db, id=vehicle_id)
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
@@ -220,7 +223,7 @@ async def reupload_fc(vehicle_id: str, file: UploadFile = File(...), db: Session
 
 @router.put("/vehicle/{vehicle_id}/photo/{position}")
 async def reupload_vehicle_photo(vehicle_id: str, position: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
-    vehicle = db.query(Vehicle).filter(Vehicle.vehicle_id == vehicle_id).first()
+    vehicle = crud_vehicle.get(db, id=vehicle_id)
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
