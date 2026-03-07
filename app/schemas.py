@@ -337,16 +337,16 @@ class VehicleTariffConfigResponse(VehicleTariffConfigBase):
 
 # Error Handling Schemas
 class ErrorHandlingCreate(BaseModel):
-    error_type: str
+    error_type: Optional[str] = None
     error_code: int  # Changed to int for unique numeric codes
-    error_description: str
+    error_description: Optional[str] = None
 
 class ErrorHandlingResponse(BaseModel):
     error_id: str  # Changed to str to match UUID in database
-    error_type: str
+    error_type: Optional[str] = None
     error_code: int  # Changed to int
-    error_description: str
-    created_at: datetime
+    error_description: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

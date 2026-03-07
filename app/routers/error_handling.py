@@ -34,14 +34,17 @@ def get_all_errors(
 ):
     """Get all error logs"""
     try:
+        logger.info(f"Fetching errors: skip={skip}, limit={limit}")
         errors = db.query(ErrorHandling).offset(skip).limit(limit).all()
-        logger.info(f"Retrieved {len(errors)} errors from database")
+        logger.info(f"Successfully retrieved {len(errors)} errors from database")
+        
+        # Manually validate to catch errors before returning if needed
         return errors
     except Exception as e:
-        logger.error(f"Database error in get_all_errors: {str(e)}", exc_info=True)
+        logger.error(f"Error in get_all_errors: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal server error: {str(e)}"
+            detail=f"Database or Serialization error: {str(e)}"
         )
 
 # Specific routes MUST come before generic /{error_id} route
@@ -50,20 +53,22 @@ def get_all_errors(
 def get_predefined_errors(db: Session = Depends(get_db)):
     """Get all predefined errors for admin checkbox selection"""
     try:
+        logger.info("Fetching predefined errors")
         errors = db.query(ErrorHandling).all()
         return {
             "errors": [
                 {
                     "error_code": error.error_code,
                     "error_type": error.error_type,
-                    "error_description": error.error_description
+                    "error_description": error.error_description,
+                    "error_id": error.error_id
                 }
                 for error in errors
             ]
         }
     except Exception as e:
-        logger.error(f"Database error in get_predefined_errors: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error in get_predefined_errors: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @router.get("/{error_id}", response_model=ErrorHandlingResponse)
 def get_error_by_id(error_id: str, db: Session = Depends(get_db)):
