@@ -204,22 +204,20 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         # Handles "One Way", "one_way", "oneWay", "round_trip", etc.
         trip_type_norm = (trip.trip_type or "").strip().lower().replace("_", "").replace(" ", "")
         
-        # Apply Minimum KM Rules
+        # Apply Minimum KM Rules strictly from database tariff config
         if trip_type_norm in ["oneway", "onewaytrip"]:
-            # One Way: default 130 KM
-            min_km = tariff.one_way_min_km if tariff.one_way_min_km is not None else MIN_ONE_WAY_KM
+            min_km = tariff.one_way_min_km or 0
             chargeable_distance = max(actual_distance, Decimal(str(min_km)))
             fare = chargeable_distance * tariff.one_way_per_km
             
         elif trip_type_norm in ["roundtrip", "roundtripway"]:
-            # Round Trip: default 750 KM
-            min_km = tariff.round_trip_min_km if tariff.round_trip_min_km is not None else MIN_ROUND_TRIP_KM
+            min_km = tariff.round_trip_min_km or 0
             chargeable_distance = max(actual_distance, Decimal(str(min_km)))
             fare = chargeable_distance * tariff.round_trip_per_km
             
         else:
             # Default fallback (usually One Way logic)
-            min_km = tariff.one_way_min_km if tariff.one_way_min_km is not None else MIN_ONE_WAY_KM
+            min_km = tariff.one_way_min_km or 0
             chargeable_distance = max(actual_distance, Decimal(str(min_km)))
             fare = chargeable_distance * tariff.one_way_per_km
             

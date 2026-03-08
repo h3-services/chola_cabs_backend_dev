@@ -222,17 +222,17 @@ def calculate_fare(self, db: Session, trip: Trip) -> Optional[Decimal]:
     # Handles "One Way", "one_way", "oneWay", "round_trip", etc.
     trip_type_norm = (trip.trip_type or "").strip().lower().replace("_", "").replace(" ", "")
     
-    # Apply Minimum KM Rules (Default: One Way 130km, Round Trip 750km)
+    # Apply Minimum KM Rules strictly from database table
     if trip_type_norm in ["oneway", "onewaytrip"]:
-        min_km = tariff.one_way_min_km or 130
+        min_km = tariff.one_way_min_km or 0
         chargeable_distance = max(distance_km, Decimal(str(min_km)))
         fare = chargeable_distance * tariff.one_way_per_km
     elif trip_type_norm in ["roundtrip", "roundtripway"]:
-        min_km = tariff.round_trip_min_km or 750
+        min_km = tariff.round_trip_min_km or 0
         chargeable_distance = max(distance_km, Decimal(str(min_km)))
         fare = chargeable_distance * tariff.round_trip_per_km
     else:
-        min_km = tariff.one_way_min_km or 130
+        min_km = tariff.one_way_min_km or 0
         chargeable_distance = max(distance_km, Decimal(str(min_km)))
         fare = chargeable_distance * tariff.one_way_per_km
     
@@ -246,7 +246,7 @@ def calculate_fare(self, db: Session, trip: Trip) -> Optional[Decimal]:
 ### **Fare Calculation:**
 - ✅ **Uses**: Odometer distance × Per KM rate
 - ❌ **Does NOT use**: Driver allowance
-- ✅ **Formula**: `fare = billable_distance × per_km_rate` (Where billable_distance applies minimum KM rules: 130km for One Way, 750km for Round Trip)
+- ✅ **Formula**: `fare = billable_distance × per_km_rate` (Where billable_distance applies minimum KM rules strictly from the `vehicle_tariff_config` table)
 
 ### **Driver Allowance:**
 - ✅ **Stored** in tariff config
@@ -265,4 +265,4 @@ def calculate_fare(self, db: Session, trip: Trip) -> Optional[Decimal]:
 The current implementation already follows your requirement:
 - Stores driver allowance in tariff config
 - Does NOT add it to fare calculation
-- Calculates fare based on odometer distance with **Minimum KM** rules (750km for Round Trip)
+- Calculates fare based on odometer distance with **Minimum KM** rules (strictly using the values configured in the `vehicle_tariff_config` table)
