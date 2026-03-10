@@ -61,7 +61,7 @@ class StorageService:
             
             # Compress if it's an image
             ext = os.path.splitext(file_path)[1].lower()
-            if ext in [".jpg", ".jpeg", ".png"]:
+            if ext in [".jpg", ".jpeg", ".png", ".heic", ".webp"]:
                 try:
                     file_body = compress_image(file)
                 except Exception as e:
@@ -107,7 +107,7 @@ class StorageService:
             file_path = os.path.join(folder_path, filename)
             
             ext = os.path.splitext(filename)[1].lower()
-            if ext in [".jpg", ".jpeg", ".png"]:
+            if ext in [".jpg", ".jpeg", ".png", ".heic", ".webp"]:
                 try:
                     compressed_buffer = compress_image(file)
                     with open(file_path, "wb") as buffer:

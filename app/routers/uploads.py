@@ -60,7 +60,7 @@ def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id:
     file_path = os.path.join(folder_path, filename)
     
     # Compress images, keep PDFs as is
-    if ext in [".jpg", ".jpeg", ".png"]:
+    if ext in [".jpg", ".jpeg", ".png", ".heic", ".webp"]:
         try:
             compressed_buffer = compress_image(file)
             with open(file_path, "wb") as buffer:
