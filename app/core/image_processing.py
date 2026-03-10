@@ -1,8 +1,12 @@
 from PIL import Image
+from pillow_heif import register_heif_opener
 import io
 import os
 from fastapi import UploadFile
 import logging
+
+# Register HEIF support for Pillow
+register_heif_opener()
 
 logger = logging.getLogger(__name__)
 
