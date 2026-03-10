@@ -287,6 +287,13 @@ def update_driver(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Driver not found"
             )
+        if driver_update.phone_number:
+            existing_phone = crud_driver.get_by_phone(db, phone_number=int(driver_update.phone_number))
+            if existing_phone and existing_phone.driver_id != driver_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Phone number already registered to another driver"
+                )
         
         # ✅ OPTIMIZED: Update using CRUD
         updated_driver = crud_driver.update(db, db_obj=driver, obj_in=driver_update)

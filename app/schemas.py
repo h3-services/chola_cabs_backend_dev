@@ -50,20 +50,19 @@ class DriverBase(BaseModel):
     licence_number: Optional[str] = None
     aadhar_number: Optional[str] = None
     licence_expiry: Optional[date] = None
-    police_verification_url: Optional[str] = None
 
 class DriverCreate(DriverBase):
     device_id: Optional[str] = None
 
 class DriverUpdate(BaseModel):
     name: Optional[str] = None
+    phone_number: Optional[str] = None
     email: Optional[str] = None
     primary_location: Optional[str] = None
     licence_number: Optional[str] = None
     aadhar_number: Optional[str] = None
     licence_expiry: Optional[date] = None
     device_id: Optional[str] = None
-    police_verification_url: Optional[str] = None
 
 class DriverResponse(DriverBase):
     driver_id: str
