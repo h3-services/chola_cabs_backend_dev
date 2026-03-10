@@ -57,6 +57,11 @@ def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id:
     folder_path = os.path.join(UPLOAD_DIR, folder)
     os.makedirs(folder_path, exist_ok=True)
     
+    # Force .jpg extension for all compressed images for browser compatibility
+    # (.heic, .webp don't view directly in some browsers like Chrome)
+    if ext in [".jpg", ".jpeg", ".png", ".heic", ".webp"]:
+        filename = os.path.splitext(filename)[0] + ".jpg"
+
     file_path = os.path.join(folder_path, filename)
     
     # Compress images, keep PDFs as is

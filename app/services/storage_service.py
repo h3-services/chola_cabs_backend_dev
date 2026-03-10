@@ -38,14 +38,21 @@ class StorageService:
         Returns: Public URL of the uploaded file
         """
         # Validate file extension
-        allowed_extensions = {".jpg", ".jpeg", ".png", ".pdf"}
+        allowed_extensions = {".jpg", ".jpeg", ".png", ".pdf", ".heic", ".webp"}
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in allowed_extensions:
             raise HTTPException(400, f"Invalid file type. Allowed: {', '.join(allowed_extensions)}")
         
         # Generate unique filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{timestamp}_{file.filename}"
+        base_name = os.path.splitext(file.filename)[0]
+        
+        # Force .jpg for images for browser compatibility
+        if ext in [".jpg", ".jpeg", ".png", ".heic", ".webp"]:
+            filename = f"{timestamp}_{base_name}.jpg"
+        else:
+            filename = f"{timestamp}_{file.filename}"
+            
         file_path = f"{folder}/{filename}"
         
         if self.use_s3:
