@@ -13,6 +13,7 @@ from app.crud.crud_driver import crud_driver
 from app.crud.crud_vehicle import crud_vehicle
 from app.crud.crud_trip import crud_trip
 import pathlib
+from app.core.image_processing import compress_image
 
 # Load environment variables with absolute path
 env_path = pathlib.Path(__file__).parent.parent.parent / '.env'
@@ -20,8 +21,17 @@ load_dotenv(dotenv_path=env_path)
 
 router = APIRouter(prefix="/uploads", tags=["uploads"])
 
-# Allowed file extensions
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf"}
+# Allowed file extensions - Synced with mobile formats
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".pdf", ".heic", ".webp"}
+
+# Position mapping to handle various mobile labels
+POSITION_MAPPING = {
+    "front": "front", "frontview": "front", "front_view": "front",
+    "back": "back", "backview": "back", "back_view": "back", "rear": "back",
+    "left": "left", "leftview": "left", "left_view": "left", "leftsideview": "left", "left_side_view": "left",
+    "right": "right", "rightview": "right", "right_view": "right", "rightsideview": "right", "right_side_view": "right",
+    "inside": "inside", "insideview": "inside", "inside_view": "inside", "interior": "inside"
+}
 
 def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id: str = None, doc_type: str = None) -> str:
     """Save uploaded file and return URL"""
@@ -48,8 +58,21 @@ def save_file(file: UploadFile, folder: str, entity_type: str = None, entity_id:
     os.makedirs(folder_path, exist_ok=True)
     
     file_path = os.path.join(folder_path, filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    
+    # Compress images, keep PDFs as is
+    if ext in [".jpg", ".jpeg", ".png"]:
+        try:
+            compressed_buffer = compress_image(file)
+            with open(file_path, "wb") as buffer:
+                buffer.write(compressed_buffer.getvalue())
+        except Exception as e:
+            # Fallback to standard copy if compression fails
+            file.file.seek(0)
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+    else:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
     
     return f"{BASE_URL}/{folder}/{filename}"
 
@@ -145,13 +168,15 @@ async def upload_vehicle_photo(vehicle_id: str, position: str, file: UploadFile 
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    if position not in ["front", "back", "left", "right", "inside"]:
-        raise HTTPException(400, "Invalid position")
+    # Normalize position string
+    normalized_pos = POSITION_MAPPING.get(position.lower().replace(" ", "_"))
+    if not normalized_pos:
+        raise HTTPException(400, f"Invalid position: {position}. Allowed: {', '.join(set(POSITION_MAPPING.values()))}")
     
-    url = save_file(file, f"vehicles/{position}", "vehicle", vehicle_id, position)
-    setattr(vehicle, f"vehicle_{position}_url", url)
+    url = save_file(file, f"vehicles/{normalized_pos}", "vehicle", vehicle_id, normalized_pos)
+    setattr(vehicle, f"vehicle_{normalized_pos}_url", url)
     db.commit()
-    return {f"vehicle_{position}_url": url}
+    return {f"vehicle_{normalized_pos}_url": url}
 
 # RE-UPLOAD ENDPOINTS (PUT methods)
 
@@ -227,10 +252,12 @@ async def reupload_vehicle_photo(vehicle_id: str, position: str, file: UploadFil
     if not vehicle:
         raise HTTPException(404, "Vehicle not found")
     
-    if position not in ["front", "back", "left", "right", "inside"]:
-        raise HTTPException(400, "Invalid position")
+    # Normalize position string
+    normalized_pos = POSITION_MAPPING.get(position.lower().replace(" ", "_"))
+    if not normalized_pos:
+        raise HTTPException(400, f"Invalid position: {position}. Allowed: {', '.join(set(POSITION_MAPPING.values()))}")
     
-    url = save_file(file, f"vehicles/{position}", "vehicle", vehicle_id, position)
-    setattr(vehicle, f"vehicle_{position}_url", url)
+    url = save_file(file, f"vehicles/{normalized_pos}", "vehicle", vehicle_id, normalized_pos)
+    setattr(vehicle, f"vehicle_{normalized_pos}_url", url)
     db.commit()
-    return {f"vehicle_{position}_url": url, "message": f"Vehicle {position} photo re-uploaded successfully"}
+    return {f"vehicle_{normalized_pos}_url": url, "message": f"Vehicle {normalized_pos} photo re-uploaded successfully"}

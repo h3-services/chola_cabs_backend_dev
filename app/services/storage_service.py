@@ -8,6 +8,7 @@ from botocore.exceptions import ClientError
 from fastapi import UploadFile, HTTPException
 from datetime import datetime
 import logging
+from app.core.image_processing import compress_image
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +59,21 @@ class StorageService:
             # Determine content type
             content_type = file.content_type or "application/octet-stream"
             
+            # Compress if it's an image
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext in [".jpg", ".jpeg", ".png"]:
+                try:
+                    file_body = compress_image(file)
+                except Exception as e:
+                    logger.warning(f"Compression failed, uploading original: {e}")
+                    file.file.seek(0)
+                    file_body = file.file
+            else:
+                file_body = file.file
+
             # Upload to S3
             self.s3_client.upload_fileobj(
-                file.file,
+                file_body,
                 self.bucket_name,
                 file_path,
                 ExtraArgs={
@@ -92,8 +105,21 @@ class StorageService:
             
             # Save file
             file_path = os.path.join(folder_path, filename)
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+            
+            ext = os.path.splitext(filename)[1].lower()
+            if ext in [".jpg", ".jpeg", ".png"]:
+                try:
+                    compressed_buffer = compress_image(file)
+                    with open(file_path, "wb") as buffer:
+                        buffer.write(compressed_buffer.getvalue())
+                except Exception as e:
+                    logger.warning(f"Compression failed, saving original: {e}")
+                    file.file.seek(0)
+                    with open(file_path, "wb") as buffer:
+                        shutil.copyfileobj(file.file, buffer)
+            else:
+                with open(file_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
             
             # Generate URL
             url = f"{self.base_url}/{folder}/{filename}"
