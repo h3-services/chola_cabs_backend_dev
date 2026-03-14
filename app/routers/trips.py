@@ -336,6 +336,47 @@ def update_trip_status(
         )
 
 
+@router.patch("/{trip_id}/remind")
+def remind_drivers(trip_id: str, db: Session = Depends(get_db)):
+    """Bump the trip to the top of the available list (updates updated_at time)"""
+    try:
+        trip = crud_trip.get(db, id=trip_id)
+        if not trip:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trip not found"
+            )
+        
+        # Only allow unassigned trips to be bumped
+        if trip.assigned_driver_id is not None or trip.trip_status != TripStatus.OPEN:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Can only remind drivers for open, unassigned trips"
+            )
+        
+        # Manually force the updated_at timestamp to now, to bump it to the top
+        trip.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(trip)
+        
+        logger.info(f"Trip {trip_id} bumped/reminded. New updated_at: {trip.updated_at}")
+        
+        return {
+            "message": "Trip bumped successfully. Drivers can now be notified.",
+            "trip_id": trip_id,
+            "updated_at": trip.updated_at.isoformat() if trip.updated_at else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reminding drivers for trip {trip_id}: {e}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to remind drivers"
+        )
+
+
 @router.patch("/{trip_id}/unassign")
 def unassign_driver(trip_id: str, db: Session = Depends(get_db)):
     """Unassign driver from trip - OPTIMIZED"""

@@ -56,7 +56,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                 Trip.trip_status == TripStatus.OPEN,
                 Trip.assigned_driver_id == None
             )
-        ).offset(skip).limit(limit).all()
+        ).order_by(Trip.updated_at.desc()).offset(skip).limit(limit).all()
     
     def get_by_status(
         self,
