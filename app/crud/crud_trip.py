@@ -79,7 +79,7 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         """
         return self._apply_soft_delete_filter(db.query(Trip)).filter(
             Trip.trip_status == status
-        ).offset(skip).limit(limit).all()
+        ).order_by(Trip.updated_at.desc()).offset(skip).limit(limit).all()
     
     def get_by_driver(
         self,

@@ -50,7 +50,7 @@ def get_all_trips(
             trips = crud_trip.get_by_status(db, status=status_filter, skip=skip, limit=limit)
         else:
             # ✅ OPTIMIZED: Using CRUD layer
-            trips = crud_trip.get_multi(db, skip=skip, limit=limit, order_by="-created_at")
+            trips = crud_trip.get_multi(db, skip=skip, limit=limit, order_by="-updated_at")
         
         # Convert to dict for response
         result = []
