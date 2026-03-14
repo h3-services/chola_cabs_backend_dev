@@ -204,6 +204,20 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
         # Handles "One Way", "one_way", "oneWay", "round_trip", etc.
         trip_type_norm = (trip.trip_type or "").strip().lower().replace("_", "").replace(" ", "")
         
+        # Calculate actual days
+        import math
+        trip_days = 1
+        
+        if trip.started_at and trip.ended_at:
+            hours = (trip.ended_at - trip.started_at).total_seconds() / 3600.0
+            trip_days = max(1, math.ceil(hours / 24.0))
+        elif trip.planned_start_at and trip.planned_end_at:
+            hours = (trip.planned_end_at - trip.planned_start_at).total_seconds() / 3600.0
+            trip_days = max(1, math.ceil(hours / 24.0))
+
+        tariff_driver_allowance = tariff.driver_allowance or Decimal("0")
+        calc_driver_allowance = tariff_driver_allowance * Decimal(str(trip_days))
+        
         # Apply Minimum KM Rules strictly from database tariff config
         if trip_type_norm in ["oneway", "onewaytrip"]:
             min_km = tariff.one_way_min_km or 0
@@ -211,8 +225,9 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
             fare = chargeable_distance * tariff.one_way_per_km
             
         elif trip_type_norm in ["roundtrip", "roundtripway"]:
-            min_km = tariff.round_trip_min_km or 0
-            chargeable_distance = max(actual_distance, Decimal(str(min_km)))
+            min_km_per_day = tariff.round_trip_min_km or 0
+            total_min_km = min_km_per_day * trip_days
+            chargeable_distance = max(actual_distance, Decimal(str(total_min_km)))
             fare = chargeable_distance * tariff.round_trip_per_km
             
         else:
@@ -223,7 +238,9 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
             
         return {
             "fare": fare,
-            "chargeable_distance": chargeable_distance
+            "chargeable_distance": chargeable_distance,
+            "driver_allowance": calc_driver_allowance,
+            "trip_days": trip_days
         }
 
     def calculate_total_amount(self, trip: Trip) -> Decimal:
@@ -272,6 +289,8 @@ class CRUDTrip(CRUDBase[Trip, TripCreate, TripUpdate]):
                     fare_data = self.calculate_fare(db, trip)
                     trip.fare = fare_data["fare"]
                     trip.distance_km = fare_data["chargeable_distance"]
+                    if "driver_allowance" in fare_data and fare_data["driver_allowance"] > 0:
+                        trip.driver_allowance = Decimal(fare_data["driver_allowance"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 
                 # ✅ Calculate total amount (fare + extras)
                 trip.total_amount = self.calculate_total_amount(trip)

@@ -581,6 +581,8 @@ def update_odometer_end(
 
         # ── Auto-complete trip ────────────────────────────────────────────
         if trip.trip_status != TripStatus.COMPLETED:
+            if not trip.started_at:
+                trip.started_at = trip.planned_start_at or datetime.utcnow()
             trip.trip_status = TripStatus.COMPLETED
             trip.ended_at = datetime.utcnow()
 
@@ -589,6 +591,8 @@ def update_odometer_end(
             if fare_data.get("fare"):
                 trip.fare = Decimal(fare_data["fare"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 trip.distance_km = fare_data["chargeable_distance"]
+                if "driver_allowance" in fare_data and fare_data["driver_allowance"] > 0:
+                    trip.driver_allowance = Decimal(fare_data["driver_allowance"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
                 # Deduct platform commission from driver wallet
                 comm_pct = Decimal(str(DEFAULT_DRIVER_COMMISSION_PERCENT)) / Decimal("100")
